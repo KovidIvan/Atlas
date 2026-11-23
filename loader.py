@@ -69,11 +69,12 @@ class CountryModule(BaseModel):
 class MapPoint(BaseModel):
     id: str
     name: str
-    category: str  # ogim | university | dorm | pharmacy | bank | telecom | halal | accessible
+    category: str  # ogim | university | dorm | services | pharmacy | bank | telecom | halal
     address: str
-    lat: float
-    lon: float
+    lat: float | None = None
+    lon: float | None = None
     hours: str = ""
+    phone: str = ""
     note: str = ""
     halal: bool = False
     accessible: bool = False

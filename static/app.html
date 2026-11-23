@@ -681,16 +681,22 @@
     }
 
     .place-row {
-      padding: 12px 0;
+      padding: 16px 0;
       border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .place-row:first-child { border-top: none; padding-top: 0; }
+    .place-row:last-child { padding-bottom: 0; }
+
+    .place-top {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 12px;
     }
-
-    .place-row:first-child { border-top: none; padding-top: 0; }
-    .place-row:last-child { padding-bottom: 0; }
 
     .place-name {
       font-size: 14px;
@@ -699,11 +705,79 @@
       color: var(--text-1);
     }
 
+    .place-cat {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 16px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--raised);
+      color: var(--text-2);
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
     .place-meta {
-      margin-top: 4px;
       font-size: 12px;
       line-height: 18px;
       color: var(--text-2);
+    }
+
+    .place-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .place-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 32px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text-1);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease);
+    }
+
+    .place-action-btn:hover {
+      background: var(--raised);
+    }
+
+    .place-action-btn.primary {
+      color: var(--accent);
+      border-color: rgba(14, 77, 64, 0.24);
+      background: var(--accent-soft);
+    }
+
+    .place-action-btn.primary:hover {
+      background: rgba(14, 77, 64, 0.14);
+    }
+
+    .search-wrap {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .search-wrap input {
+      padding-left: 36px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      color: var(--text-3);
+      pointer-events: none;
     }
 
     .route-link {
@@ -1022,7 +1096,7 @@
             <h2 class="card-title" id="map-title">Карта первых 48 часов</h2>
             <p class="card-sub" id="map-sub">Проверенные точки рядом с университетом</p>
           </div>
-          <span class="mono" style="font-size:12px; color:var(--text-3);" id="map-count">0 точек</span>
+          <span class="mono" style="font-size:12px; color:var(--text-3);" id="map-count">0</span>
         </div>
 
         <div class="filters" id="map-chips">
@@ -1030,14 +1104,32 @@
           <button class="filter-btn" data-cat="ogim"><span class="cat-dot" style="background:var(--urgent);"></span>ОГиМ</button>
           <button class="filter-btn" data-cat="university"><span class="cat-dot" style="background:var(--accent);"></span>Вуз</button>
           <button class="filter-btn" data-cat="dorm"><span class="cat-dot" style="background:var(--accent);"></span>Общежития</button>
+          <button class="filter-btn" data-cat="services">Документы и транспорт</button>
           <button class="filter-btn" data-cat="pharmacy">Медицина и аптеки</button>
           <button class="filter-btn" data-cat="bank">Банки</button>
           <button class="filter-btn" data-cat="telecom">Связь</button>
-          <button class="filter-btn" data-flag="halal"><span class="cat-dot" style="background:var(--ochre);"></span>Халяль</button>
+          <button class="filter-btn" data-cat="halal"><span class="cat-dot" style="background:var(--ochre);"></span>Питание и магазины</button>
+          <button class="filter-btn" data-flag="halal">Халяль</button>
           <button class="filter-btn" data-flag="accessible">Доступная среда</button>
         </div>
 
         <div id="map"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Справочник адресов</h2>
+            <p class="card-sub">Полный список проверенных организаций, включая адреса без метки на карте</p>
+          </div>
+          <span class="mono" style="font-size:12px; color:var(--text-3);" id="dir-count">0</span>
+        </div>
+
+        <div class="search-wrap">
+          <svg class="icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="map-search" placeholder="Поиск по названию, улице или услуге" oninput="renderMapAndDirectory()" />
+        </div>
+
         <div class="place-list" id="map-list"></div>
       </div>
     </section>
@@ -1161,8 +1253,21 @@
       telecom: "#5E554A",
     };
 
+    const CAT_LABELS = {
+      ogim: "ОГиМ",
+      university: "Вуз",
+      dorm: "Общежитие",
+      services: "Документы / транспорт",
+      pharmacy: "Медицина",
+      bank: "Банк",
+      telecom: "Связь",
+      halal: "Питание / ТЦ",
+    };
+
     let mapInstance = null;
     let markersLayer = null;
+    let markersById = {};
+    let loadedMapData = { city: "Витебск", university: "", center: [55.1825, 30.2245], points: [] };
     let activeMapCat = "";
     let filterHalal = false;
     let filterAccessible = false;
@@ -1366,18 +1471,34 @@
       const qs = new URLSearchParams({ university_id: uniId, halal: filterHalal, accessible: filterAccessible });
       if (activeMapCat) qs.set("category", activeMapCat);
       const res = await fetch("/api/map?" + qs.toString());
-      const data = await res.json();
+      loadedMapData = await res.json();
 
-      document.getElementById("map-title").textContent = `Карта · ${data.city || "Витебск"}`;
-      document.getElementById("map-sub").textContent = data.university
-        ? `Ключевые точки рядом с ${data.university}`
+      document.getElementById("map-title").textContent = `Карта · ${loadedMapData.city || "Витебск"}`;
+      document.getElementById("map-sub").textContent = loadedMapData.university
+        ? `Проверенные места для гостей ${loadedMapData.university}`
         : "Проверенные точки первых 48 часов";
-      document.getElementById("map-count").textContent = `${data.points.length}`;
 
+      renderMapAndDirectory();
+    }
+
+    function renderMapAndDirectory() {
+      const query = (document.getElementById("map-search")?.value || "").trim().toLowerCase();
+      const city = loadedMapData.city || "Витебск";
+      const points = (loadedMapData.points || []).filter(p => {
+        if (!query) return true;
+        const hay = `${p.name} ${p.address} ${p.note || ""} ${CAT_LABELS[p.category] || ""}`.toLowerCase();
+        return hay.includes(query);
+      });
+
+      const pinned = points.filter(p => p.lat !== null && p.lat !== undefined && p.lon !== null && p.lon !== undefined);
+      document.getElementById("map-count").textContent = `На карте: ${pinned.length}`;
+      document.getElementById("dir-count").textContent = `Всего: ${points.length}`;
+
+      markersById = {};
       if (mapInstance && markersLayer) {
         markersLayer.clearLayers();
         const bounds = [];
-        data.points.forEach(p => {
+        pinned.forEach(p => {
           const color = PIN_COLORS[p.category] || "#5E554A";
           const pinIcon = L.divIcon({
             className: "",
@@ -1385,37 +1506,70 @@
             iconSize: [14, 14],
             iconAnchor: [7, 7],
           });
-          L.marker([p.lat, p.lon], { icon: pinIcon })
+          const marker = L.marker([p.lat, p.lon], { icon: pinIcon })
             .addTo(markersLayer)
             .bindPopup(
               `<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address)}`
               + (p.hours ? `<br>${escapeHtml(p.hours)}` : "")
+              + (p.phone ? `<br><a href="tel:${escapeHtml(p.phone)}">${escapeHtml(p.phone)}</a>` : "")
               + `<br><a target="_blank" href="https://yandex.by/maps/?rtext=~${p.lat},${p.lon}">Построить маршрут</a>`
             );
+          markersById[p.id] = { marker, lat: p.lat, lon: p.lon };
           bounds.push([p.lat, p.lon]);
         });
         if (bounds.length > 1) {
           mapInstance.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
         } else if (bounds.length === 1) {
           mapInstance.setView(bounds[0], 15);
-        } else if (data.center) {
-          mapInstance.setView(data.center, 13);
+        } else if (loadedMapData.center) {
+          mapInstance.setView(loadedMapData.center, 13);
         }
       }
 
-      document.getElementById("map-list").innerHTML = data.points.map(p => `
-        <div class="place-row">
-          <div>
-            <div class="place-name">${escapeHtml(p.name)}</div>
+      document.getElementById("map-list").innerHTML = points.map(p => {
+        const hasPin = p.lat !== null && p.lat !== undefined && p.lon !== null && p.lon !== undefined;
+        const fullAddr = `${city}, ${p.address}`;
+        const routeHref = hasPin
+          ? `https://yandex.by/maps/?rtext=~${p.lat},${p.lon}`
+          : `https://yandex.by/maps/?text=${encodeURIComponent(fullAddr)}`;
+        const catLabel = CAT_LABELS[p.category] || p.category;
+        return `
+          <div class="place-row">
+            <div class="place-top">
+              <div class="place-name">${escapeHtml(p.name)}</div>
+              <span class="place-cat">${escapeHtml(catLabel)}</span>
+            </div>
             <div class="place-meta">${escapeHtml(p.address)}${p.hours ? " · " + escapeHtml(p.hours) : ""}</div>
             ${p.note ? `<div class="place-meta">${escapeHtml(p.note)}</div>` : ""}
+            <div class="place-actions">
+              ${hasPin
+                ? `<button type="button" class="place-action-btn primary" onclick="focusPlace('${escapeHtml(p.id)}')">${ICONS.pin}<span>На карте</span></button>`
+                : `<span class="place-cat">Только адрес</span>`}
+              <button type="button" class="place-action-btn" onclick="copyAddress(this, '${escapeHtml(fullAddr)}')"><span>Скопировать адрес</span></button>
+              <a class="place-action-btn" target="_blank" href="${routeHref}"><span>Маршрут</span>${ICONS.link}</a>
+              ${p.phone ? `<a class="place-action-btn mono" href="tel:${escapeHtml(p.phone)}">${escapeHtml(p.phone)}</a>` : ""}
+            </div>
           </div>
-          <a class="route-link" target="_blank" href="https://yandex.by/maps/?rtext=~${p.lat},${p.lon}">
-            <span>Маршрут</span>
-            ${ICONS.link}
-          </a>
-        </div>
-      `).join("") || `<div class="card-sub">По выбранным фильтрам точек нет</div>`;
+        `;
+      }).join("") || `<div class="card-sub">По выбранным фильтрам мест не найдено</div>`;
+    }
+
+    function focusPlace(id) {
+      const entry = markersById[id];
+      if (!entry || !mapInstance) return;
+      document.getElementById("map").scrollIntoView({ behavior: "smooth", block: "center" });
+      mapInstance.flyTo([entry.lat, entry.lon], 16, { duration: 0.5 });
+      setTimeout(() => entry.marker.openPopup(), 450);
+    }
+
+    async function copyAddress(btn, text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        const span = btn.querySelector("span");
+        const prev = span.textContent;
+        span.textContent = "Скопировано";
+        setTimeout(() => { span.textContent = prev; }, 1400);
+      } catch (_) {}
     }
 
     function quickAsk(text) {
