@@ -184,6 +184,48 @@ async def api_map(
     }
 
 
+@app.get("/api/toolkit")
+async def api_toolkit(
+    destination: str = Query("BY"),
+    university_id: str | None = Query("vsu_vitebsk"),
+) -> dict:
+    """Единый пакет для вкладки «Сервисы» и офлайн-кэша: карточки показа, ЕРИП, фразы, SOS."""
+    dest = destination.upper()
+    country = registry.countries.get(dest)
+    uni = registry.universities.get(university_id) if university_id else None
+    if uni and uni.country_code.upper() != dest:
+        uni = None
+
+    erip = []
+    show_cards = []
+    if uni:
+        erip.extend([e.model_dump() for e in uni.erip_guides])
+        show_cards.extend([c.model_dump() for c in uni.show_cards])
+    if country:
+        erip.extend([e.model_dump() for e in country.erip_guides])
+        show_cards.extend([c.model_dump() for c in country.show_cards])
+
+    return {
+        "country": country.name if country else dest,
+        "university": uni.short_name if uni else None,
+        "erip_guides": erip,
+        "show_cards": show_cards,
+        "phrases": [p.model_dump() for p in country.phrasebook] if country else [],
+        "contacts": [c.model_dump() for c in country.sos_contacts] if country else [],
+        "university_office": (
+            {
+                "name": uni.international_office_name,
+                "university": uni.short_name,
+                "address": uni.international_office_address,
+                "phone": uni.international_office_phone,
+                "email": uni.international_office_email,
+            }
+            if uni
+            else None
+        ),
+    }
+
+
 @app.get("/api/phrasebook")
 async def api_phrasebook(destination: str = Query("BY")) -> dict:
     country = registry.countries.get(destination.upper())

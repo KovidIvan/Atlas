@@ -122,5 +122,28 @@
     {"title": "Милиция", "phone": "102", "note": "Круглосуточно"},
     {"title": "Скорая медицинская помощь", "phone": "103", "note": "Круглосуточно"},
     {"title": "Посольство Республики Узбекистан в Минске", "phone": "+375 17 235-72-08", "note": "ул. Покровская, 24, Минск (проверьте актуальный номер на сайте посольства)"}
+  ],
+  "show_cards": [
+    {
+      "id": "by_card_sim",
+      "target_role": "В салоне связи (МТС / A1)",
+      "local_text": "Здравствуйте. Мне нужна местная SIM-карта с интернетом.\nЯ иностранный гражданин, паспорт с собой.",
+      "sub_note": "Оформление SIM-карты в Беларуси требует предъявления паспорта",
+      "native_hint": "Aloqa salonida: Internetli mahalliy SIM-karta kerak, pasportim yonimda."
+    },
+    {
+      "id": "by_card_pharmacy",
+      "target_role": "Фармацевту в аптеке",
+      "local_text": "Здравствуйте. Помогите, пожалуйста, подобрать средство от температуры и простуды без рецепта.",
+      "sub_note": "Если есть аллергия на лекарства — заранее укажите её фармацевту",
+      "native_hint": "Dorixonada: Isitma va shamollashga qarshi retseptsiz dori tanlashga yordam bering."
+    },
+    {
+      "id": "by_card_doctor",
+      "target_role": "Врачу или в регистратуре",
+      "local_text": "Здравствуйте. Я иностранный студент, у меня есть медицинская страховка и паспорт.\nПодскажите, к какому врачу обратиться.",
+      "sub_note": "Возьмите паспорт, страховой полис и направление (при медосмотре)",
+      "native_hint": "Shifokorga: Men chet ellik talabaman, tibbiy sug‘urta va pasportim bor."
+    }
   ]
 }

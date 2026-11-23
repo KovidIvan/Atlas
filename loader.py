@@ -40,6 +40,25 @@ class SosContact(BaseModel):
     note: str = ""
 
 
+class EripGuide(BaseModel):
+    id: str
+    title: str
+    category: str  # university | migration | other
+    steps: list[str]
+    input_hint: str
+    fee_note: str = ""
+    source_title: str = ""
+    verified_at: str = ""
+
+
+class ShowCard(BaseModel):
+    id: str
+    target_role: str  # Кому показывать: "Водителю такси", "Инспектору ОГиМ" и т.д.
+    local_text: str   # Крупный текст на языке страны
+    sub_note: str = ""
+    native_hint: str = ""  # Пояснение/перевод для гостя
+
+
 class RegistrationRule(BaseModel):
     citizenship: str  # код страны гражданства (например, "UZ", "BY", "*" для всех)
     grace_days: int
@@ -64,6 +83,8 @@ class CountryModule(BaseModel):
     cards: list[KnowledgeCard] = Field(default_factory=list)
     phrasebook: list[PhraseItem] = Field(default_factory=list)
     sos_contacts: list[SosContact] = Field(default_factory=list)
+    erip_guides: list[EripGuide] = Field(default_factory=list)
+    show_cards: list[ShowCard] = Field(default_factory=list)
 
 
 class MapPoint(BaseModel):
@@ -109,6 +130,8 @@ class UniversityModule(BaseModel):
     onboarding_steps: list[UniversityStep] = Field(default_factory=list)
     map_points: list[MapPoint] = Field(default_factory=list)
     cards: list[KnowledgeCard] = Field(default_factory=list)
+    erip_guides: list[EripGuide] = Field(default_factory=list)
+    show_cards: list[ShowCard] = Field(default_factory=list)
 
 
 class ModuleRegistry:
