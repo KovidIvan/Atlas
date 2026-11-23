@@ -1029,7 +1029,8 @@
           <button class="filter-btn active" data-cat="">Все</button>
           <button class="filter-btn" data-cat="ogim"><span class="cat-dot" style="background:var(--urgent);"></span>ОГиМ</button>
           <button class="filter-btn" data-cat="university"><span class="cat-dot" style="background:var(--accent);"></span>Вуз</button>
-          <button class="filter-btn" data-cat="pharmacy">Аптеки</button>
+          <button class="filter-btn" data-cat="dorm"><span class="cat-dot" style="background:var(--accent);"></span>Общежития</button>
+          <button class="filter-btn" data-cat="pharmacy">Медицина и аптеки</button>
           <button class="filter-btn" data-cat="bank">Банки</button>
           <button class="filter-btn" data-cat="telecom">Связь</button>
           <button class="filter-btn" data-flag="halal"><span class="cat-dot" style="background:var(--ochre);"></span>Халяль</button>
@@ -1375,7 +1376,7 @@
 
       if (mapInstance && markersLayer) {
         markersLayer.clearLayers();
-        if (data.center) mapInstance.setView(data.center, 14);
+        const bounds = [];
         data.points.forEach(p => {
           const color = PIN_COLORS[p.category] || "#5E554A";
           const pinIcon = L.divIcon({
@@ -1391,7 +1392,15 @@
               + (p.hours ? `<br>${escapeHtml(p.hours)}` : "")
               + `<br><a target="_blank" href="https://yandex.by/maps/?rtext=~${p.lat},${p.lon}">Построить маршрут</a>`
             );
+          bounds.push([p.lat, p.lon]);
         });
+        if (bounds.length > 1) {
+          mapInstance.fitBounds(bounds, { padding: [24, 24], maxZoom: 15 });
+        } else if (bounds.length === 1) {
+          mapInstance.setView(bounds[0], 15);
+        } else if (data.center) {
+          mapInstance.setView(data.center, 13);
+        }
       }
 
       document.getElementById("map-list").innerHTML = data.points.map(p => `
