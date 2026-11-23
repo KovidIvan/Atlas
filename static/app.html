@@ -1,0 +1,1528 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Атлас — путеводитель для гостей Беларуси и Узбекистана</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500&display=swap" rel="stylesheet" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      /* Warm paper neutral ramp */
+      --bg: #F7F4EE;
+      --surface: #FDFBF7;
+      --raised: #EFE9DF;
+      --border: rgba(31, 27, 22, 0.08);
+      --border-strong: rgba(31, 27, 22, 0.16);
+      --text-1: #1F1B16;
+      --text-2: #5E554A;
+      --text-3: #7B7266;
+
+      /* Brand & semantic */
+      --accent: #0E4D40;
+      --accent-hover: #0A3B31;
+      --accent-soft: rgba(14, 77, 64, 0.08);
+      --urgent: #B71C2C;
+      --urgent-soft: rgba(183, 28, 44, 0.08);
+      --ok: #15803D;
+      --ochre: #9A6B16;
+
+      /* Depth & motion */
+      --shadow-sm: 0 1px 2px rgba(31, 27, 22, 0.05);
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+      /* Type */
+      --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-display: "Newsreader", Georgia, serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 400;
+      background: var(--bg);
+      color: var(--text-1);
+      padding-bottom: 80px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, select {
+      font-family: inherit;
+      font-size: 14px;
+      color: inherit;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .icon {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .icon-lg {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 18px;
+    }
+
+    /* Quiet top bar */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 500;
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    /* Signature diamond mark */
+    .brand-mark {
+      width: 12px;
+      height: 12px;
+      flex: 0 0 12px;
+      background: var(--accent);
+      transform: rotate(45deg);
+      border-radius: 2px;
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 500;
+      color: var(--text-1);
+      margin: 0;
+    }
+
+    .brand-route {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .privacy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-2);
+      font-size: 12px;
+      line-height: 16px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease);
+    }
+
+    .privacy-btn:hover {
+      background: var(--raised);
+      border-color: var(--border-strong);
+      color: var(--text-1);
+    }
+
+    /* Main container */
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    @media (min-width: 640px) {
+      header { padding: 0 24px; }
+      main { padding: 24px; }
+    }
+
+    .tab { display: none; }
+    .tab.active {
+      display: block;
+      animation: tabEnter 220ms var(--ease) both;
+    }
+
+    @keyframes tabEnter {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 16px;
+      line-height: 22px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .card-sub {
+      margin: 4px 0 0 0;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--text-2);
+    }
+
+    /* Moment 1: Deadline focus card */
+    .moment-card {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .moment-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .moment-label {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      letter-spacing: 0.01em;
+    }
+
+    .moment-figure {
+      margin-top: 4px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 32px;
+      line-height: 1.05;
+      font-weight: 500;
+      color: var(--accent);
+    }
+
+    .moment-figure.urgent {
+      color: var(--urgent);
+    }
+
+    .moment-date {
+      margin-top: 4px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--text-2);
+    }
+
+    .moment-method {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .moment-method-text {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--text-1);
+      font-weight: 500;
+    }
+
+    .moment-method-text.urgent {
+      color: var(--urgent);
+    }
+
+    .progress-row {
+      margin-top: 16px;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      margin-bottom: 8px;
+    }
+
+    .progress-track {
+      height: 4px;
+      border-radius: 4px;
+      background: var(--raised);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      transform-origin: left center;
+      transition: transform 280ms var(--ease);
+    }
+
+    /* Route parameters strip & form */
+    .params-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+
+    .params-summary {
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--text-2);
+      min-width: 0;
+    }
+
+    .params-panel {
+      display: none;
+      margin-top: -8px;
+    }
+
+    .params-panel.open {
+      display: block;
+      animation: tabEnter 180ms var(--ease) both;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 520px) {
+      .grid2 { grid-template-columns: 1fr 1fr; }
+    }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-2);
+      margin-bottom: 4px;
+    }
+
+    select, input[type="date"], input[type="text"] {
+      width: 100%;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text-1);
+      transition: border-color 140ms var(--ease), background-color 140ms var(--ease);
+    }
+
+    select:hover, input:hover {
+      border-color: rgba(31, 27, 22, 0.28);
+    }
+
+    .check-block {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--raised);
+      cursor: pointer;
+    }
+
+    .check-block input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin: 2px 0 0 0;
+      accent-color: var(--accent);
+      flex: 0 0 18px;
+    }
+
+    .check-title {
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .check-hint {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-2);
+      margin-top: 2px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 44px;
+      padding: 0 16px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background-color 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease), transform 120ms var(--ease);
+    }
+
+    .btn:active { transform: scale(0.98); }
+
+    .btn-sm {
+      height: 32px;
+      padding: 0 12px;
+      font-size: 13px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #FFFFFF;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-secondary {
+      background: var(--raised);
+      border-color: var(--border-strong);
+      color: var(--text-1);
+    }
+
+    .btn-secondary:hover {
+      background: #E6DED1;
+    }
+
+    .btn-danger {
+      background: transparent;
+      border-color: rgba(183, 28, 44, 0.35);
+      color: var(--urgent);
+    }
+
+    .btn-danger:hover {
+      background: var(--urgent-soft);
+      border-color: var(--urgent);
+    }
+
+    .btn-full { width: 100%; }
+
+    /* Signature cartographic route timeline */
+    .timeline {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-left: 28px;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 16px;
+      bottom: 16px;
+      width: 1px;
+      background: var(--border-strong);
+    }
+
+    .step {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 140ms var(--ease), opacity 160ms var(--ease);
+    }
+
+    .step.urgent {
+      border-color: rgba(183, 28, 44, 0.28);
+    }
+
+    .step.done {
+      opacity: 0.68;
+    }
+
+    /* Signature diamond waypoint on the route rail */
+    .step-node {
+      position: absolute;
+      left: -26px;
+      top: 20px;
+      width: 10px;
+      height: 10px;
+      transform: rotate(45deg);
+      border-radius: 1px;
+      background: var(--surface);
+      border: 1.5px solid var(--accent);
+    }
+
+    .step.urgent .step-node {
+      background: var(--urgent);
+      border-color: var(--urgent);
+    }
+
+    .step.done .step-node {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .step-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .step-check {
+      width: 18px;
+      height: 18px;
+      margin: 2px 0 0 0;
+      accent-color: var(--accent);
+      flex: 0 0 18px;
+      cursor: pointer;
+    }
+
+    .step-title {
+      flex: 1;
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .step-due {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      line-height: 16px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--raised);
+      color: var(--text-2);
+      white-space: nowrap;
+    }
+
+    .step-due.urgent {
+      background: var(--urgent-soft);
+      color: var(--urgent);
+    }
+
+    .step-desc {
+      margin: 8px 0 0 0;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--text-2);
+    }
+
+    .step-meta-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+    }
+
+    .meta-row .icon {
+      margin-top: 0;
+      color: var(--text-3);
+    }
+
+    .meta-row a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .meta-row a:hover { text-decoration: underline; }
+
+    .disclaimer {
+      margin-top: 16px;
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--text-3);
+    }
+
+    /* Moment 2: Map & filters */
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .filter-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text-2);
+      font-size: 13px;
+      line-height: 16px;
+      cursor: pointer;
+      transition: background-color 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease);
+    }
+
+    .filter-btn:hover {
+      background: var(--raised);
+      color: var(--text-1);
+    }
+
+    .filter-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #FFFFFF;
+    }
+
+    .cat-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 1px;
+      transform: rotate(45deg);
+      background: currentColor;
+      flex: 0 0 6px;
+    }
+
+    #map {
+      height: 320px;
+      border-radius: 12px;
+      border: 1px solid var(--border-strong);
+      margin-bottom: 16px;
+      background: var(--raised);
+    }
+
+    /* Custom diamond map pin */
+    .atlas-pin {
+      width: 14px;
+      height: 14px;
+      transform: rotate(45deg);
+      border: 2px solid #FDFBF7;
+      border-radius: 2px;
+      box-shadow: 0 2px 6px rgba(31, 27, 22, 0.25);
+    }
+
+    .place-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .place-row {
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .place-row:first-child { border-top: none; padding-top: 0; }
+    .place-row:last-child { padding-bottom: 0; }
+
+    .place-name {
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .place-meta {
+      margin-top: 4px;
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--text-2);
+    }
+
+    .route-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 32px;
+      padding: 0 8px;
+      border-radius: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background-color 140ms var(--ease);
+    }
+
+    .route-link:hover { background: var(--accent-soft); }
+
+    /* Assistant chat */
+    .quick-prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .chat-box {
+      max-height: 380px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-right: 4px;
+    }
+
+    .msg {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 20px;
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      max-width: 84%;
+      background: var(--accent);
+      color: #FFFFFF;
+    }
+
+    .msg.bot {
+      align-self: flex-start;
+      max-width: 96%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+    }
+
+    .pii-note {
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      line-height: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sources-box {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--text-3);
+    }
+
+    .sources-box a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .sources-box a:hover { text-decoration: underline; }
+
+    .chat-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .chat-form input { flex: 1; height: 44px; }
+
+    /* SOS & Phrasebook */
+    .sos-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .sos-row:first-child { border-top: none; padding-top: 0; }
+    .sos-row:last-child { padding-bottom: 0; }
+
+    .sos-phone {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 500;
+      color: var(--urgent);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .sos-phone.office { color: var(--accent); }
+    .sos-phone:hover { text-decoration: underline; }
+
+    .phrase-item {
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .phrase-item:first-child { border-top: none; padding-top: 0; }
+    .phrase-item:last-child { padding-bottom: 0; }
+
+    .phrase-tag {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      margin-bottom: 8px;
+    }
+
+    .phrase-grid {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 4px 8px;
+      font-size: 13px;
+      line-height: 20px;
+    }
+
+    .lang-code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    /* Bottom navigation */
+    nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      z-index: 600;
+    }
+
+    nav button {
+      border: none;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 400;
+      color: var(--text-3);
+      cursor: pointer;
+      transition: color 140ms var(--ease);
+    }
+
+    nav button:hover { color: var(--text-1); }
+
+    nav button.active {
+      color: var(--accent);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div>
+        <h1 class="brand-title">Атлас</h1>
+        <div class="brand-route" id="header-route">Беларусь · Узбекистан</div>
+      </div>
+    </div>
+    <button class="privacy-btn" onclick="openPrivacySection()" title="Конфиденциальность и удаление данных">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+      <span>Без сбора ПД</span>
+    </button>
+  </header>
+
+  <main>
+    <!-- TAB 1: PLAN -->
+    <section id="tab-plan" class="tab active">
+      <!-- Moment 1: Registration deadline card -->
+      <div class="moment-card" id="deadline-moment">
+        <div class="moment-top">
+          <div>
+            <div class="moment-label">Временная регистрация</div>
+            <div class="moment-figure" id="moment-days">—</div>
+            <div class="moment-date" id="moment-date">Рассчитываем срок</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="toggle-params-btn" onclick="toggleParams()">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <span>Параметры</span>
+          </button>
+        </div>
+
+        <div class="moment-method">
+          <div class="moment-method-text" id="moment-method">Загрузка маршрута</div>
+          <a class="route-link" id="moment-link" href="#" target="_blank" style="display:none;">
+            <span>Открыть портал</span>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+          </a>
+        </div>
+
+        <div class="progress-row">
+          <div class="progress-meta">
+            <span>Прогресс по маршруту</span>
+            <span class="mono" id="progress-label">0 / 0</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill" style="transform: scaleX(0);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compact route summary strip -->
+      <div class="params-bar">
+        <div class="params-summary mono" id="params-summary">UZ → BY · ВГУ · Общежитие</div>
+        <button class="btn btn-secondary btn-sm" onclick="toggleParams()">Изменить</button>
+      </div>
+
+      <!-- Collapsible route settings -->
+      <div class="card params-panel" id="params-panel">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Параметры поездки</h2>
+            <p class="card-sub">План рассчитывается по проверенным правилам для выбранной страны и вуза</p>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label for="citizenship">Гражданство</label>
+            <select id="citizenship">
+              <option value="UZ">Узбекистан (UZ)</option>
+              <option value="BY">Беларусь (BY)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="destination">Страна визита</label>
+            <select id="destination"></select>
+          </div>
+          <div class="field">
+            <label for="university">Университет</label>
+            <select id="university"></select>
+          </div>
+          <div class="field">
+            <label for="housing">Жильё</label>
+            <select id="housing">
+              <option value="dorm">Общежитие вуза</option>
+              <option value="private">Квартира или у знакомых</option>
+              <option value="hotel">Гостиница или хостел</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="purpose">Цель поездки</label>
+            <select id="purpose">
+              <option value="study">Учёба или обмен</option>
+              <option value="tourism">Туризм или деловая поездка</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="arrival">Дата въезда</label>
+            <input type="date" id="arrival" />
+          </div>
+        </div>
+
+        <label class="check-block" for="viaRf">
+          <input type="checkbox" id="viaRf" />
+          <div>
+            <div class="check-title">Въезд в Беларусь через Россию</div>
+            <div class="check-hint">При въезде через РФ онлайн-регистрация на e-pasluga.by недоступна — маршрут перестроится на личный визит в ОГиМ</div>
+          </div>
+        </label>
+
+        <button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="applyParams()">Обновить план</button>
+      </div>
+
+      <!-- Cartographic route timeline -->
+      <div class="timeline" id="plan-steps"></div>
+      <div class="disclaimer" id="plan-disclaimer"></div>
+    </section>
+
+    <!-- TAB 2: MAP (Moment 2) -->
+    <section id="tab-map" class="tab">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title" id="map-title">Карта первых 48 часов</h2>
+            <p class="card-sub" id="map-sub">Проверенные точки рядом с университетом</p>
+          </div>
+          <span class="mono" style="font-size:12px; color:var(--text-3);" id="map-count">0 точек</span>
+        </div>
+
+        <div class="filters" id="map-chips">
+          <button class="filter-btn active" data-cat="">Все</button>
+          <button class="filter-btn" data-cat="ogim"><span class="cat-dot" style="background:var(--urgent);"></span>ОГиМ</button>
+          <button class="filter-btn" data-cat="university"><span class="cat-dot" style="background:var(--accent);"></span>Вуз</button>
+          <button class="filter-btn" data-cat="pharmacy">Аптеки</button>
+          <button class="filter-btn" data-cat="bank">Банки</button>
+          <button class="filter-btn" data-cat="telecom">Связь</button>
+          <button class="filter-btn" data-flag="halal"><span class="cat-dot" style="background:var(--ochre);"></span>Халяль</button>
+          <button class="filter-btn" data-flag="accessible">Доступная среда</button>
+        </div>
+
+        <div id="map"></div>
+        <div class="place-list" id="map-list"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: ASSISTANT -->
+    <section id="tab-ai" class="tab">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">AIst / Лайлак</h2>
+            <p class="card-sub">Отвечает только по проверенной базе вуза и НПА. Паспорта и телефоны скрываются до отправки.</p>
+          </div>
+        </div>
+
+        <div class="quick-prompts">
+          <button class="filter-btn" onclick="quickAsk('Как оформить регистрацию при въезде через Россию?')">Въезд через РФ</button>
+          <button class="filter-btn" onclick="quickAsk('Какие первые шаги студента в ВГУ?')">Первые шаги в ВГУ</button>
+          <button class="filter-btn" onclick="quickAsk('Где оформить SIM-карту и банковскую карту?')">SIM и банки</button>
+          <button class="filter-btn" onclick="quickAsk('Как вести себя в мечети в Узбекистане?')">Этикет в мечети</button>
+        </div>
+
+        <div class="chat-box" id="chat-box">
+          <div class="msg bot">
+            Задайте вопрос о регистрации, въезде через Россию, медосмотре в ВГУ, связи или культурном этикете.
+          </div>
+        </div>
+
+        <div class="chat-form">
+          <input type="text" id="ai-input" placeholder="Вопрос о документах или быте" onkeydown="if(event.key==='Enter') sendQuestion()" />
+          <button class="btn btn-primary" onclick="sendQuestion()" aria-label="Отправить">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: REFERENCE / SOS / PRIVACY -->
+    <section id="tab-sos" class="tab">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Экстренные номера и международный отдел</h2>
+            <p class="card-sub">Нажмите на номер, чтобы позвонить</p>
+          </div>
+        </div>
+        <div id="sos-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Ситуативный разговорник</h2>
+            <p class="card-sub">Русский, белорусский, узбекский и английский</p>
+          </div>
+        </div>
+        <div id="phrase-list"></div>
+      </div>
+
+      <div class="card" id="privacy-card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Конфиденциальность и Закон РБ № 99-З</h2>
+            <p class="card-sub">«Атлас» не собирает ФИО, паспорта и номера телефонов. Вы можете удалить настройки и чек-лист в любой момент.</p>
+          </div>
+        </div>
+        <button class="btn btn-danger" onclick="deleteMyData()">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+          <span>Удалить данные профиля</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <nav aria-label="Разделы">
+    <button class="active" data-tab="plan" onclick="switchTab('plan', this)">
+      <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>
+      <span>План</span>
+    </button>
+    <button data-tab="map" onclick="switchTab('map', this)">
+      <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+      <span>Карта</span>
+    </button>
+    <button data-tab="ai" onclick="switchTab('ai', this)">
+      <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Ассистент</span>
+    </button>
+    <button data-tab="sos" onclick="switchTab('sos', this)">
+      <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      <span>Справка</span>
+    </button>
+  </nav>
+
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
+    const USER_ID = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 10001;
+
+    const ICONS = {
+      pin: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+      link: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>',
+      book: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>',
+      shield: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>',
+      building: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/></svg>',
+      alert: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+      check: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>',
+    };
+
+    const HOUSING_LABELS = {
+      dorm: "Общежитие",
+      private: "Частное жильё",
+      hotel: "Гостиница",
+    };
+
+    const PIN_COLORS = {
+      ogim: "#B71C2C",
+      university: "#0E4D40",
+      dorm: "#0E4D40",
+      halal: "#9A6B16",
+      pharmacy: "#5E554A",
+      bank: "#5E554A",
+      telecom: "#5E554A",
+    };
+
+    let mapInstance = null;
+    let markersLayer = null;
+    let activeMapCat = "";
+    let filterHalal = false;
+    let filterAccessible = false;
+    let lastQuestion = "";
+
+    document.getElementById("arrival").value = new Date().toISOString().slice(0, 10);
+
+    function switchTab(name, btn) {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.getElementById("tab-" + name).classList.add("active");
+      document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      if (name === "map") {
+        setTimeout(() => { initMap(); loadMapPoints(); }, 80);
+      }
+      if (name === "sos") { loadSosAndPhrases(); }
+    }
+
+    function openPrivacySection() {
+      const btn = document.querySelector('nav button[data-tab="sos"]');
+      switchTab("sos", btn);
+      setTimeout(() => {
+        document.getElementById("privacy-card").scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 120);
+    }
+
+    function toggleParams(forceState) {
+      const panel = document.getElementById("params-panel");
+      const open = typeof forceState === "boolean" ? forceState : !panel.classList.contains("open");
+      panel.classList.toggle("open", open);
+    }
+
+    async function applyParams() {
+      await loadPlan();
+      toggleParams(false);
+    }
+
+    async function loadModules() {
+      const res = await fetch("/api/modules");
+      const data = await res.json();
+      const destSel = document.getElementById("destination");
+      destSel.innerHTML = data.countries
+        .map(c => `<option value="${escapeHtml(c.code)}">${escapeHtml(c.name)} (${escapeHtml(c.code)})</option>`)
+        .join("");
+
+      const uniSel = document.getElementById("university");
+      uniSel.innerHTML = data.universities
+        .map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.short_name)} — ${escapeHtml(u.city)}</option>`)
+        .join("") + `<option value="">Без привязки к вузу</option>`;
+
+      await loadPlan();
+    }
+
+    function formatDateRu(iso) {
+      if (!iso || iso.length < 10) return "";
+      const [y, m, d] = iso.slice(0, 10).split("-");
+      return `${d}.${m}.${y}`;
+    }
+
+    function daysWord(n) {
+      const abs = Math.abs(n) % 100;
+      const last = abs % 10;
+      if (abs >= 11 && abs <= 19) return "дней";
+      if (last === 1) return "день";
+      if (last >= 2 && last <= 4) return "дня";
+      return "дней";
+    }
+
+    async function loadPlan() {
+      const payload = {
+        tg_id: USER_ID,
+        citizenship: document.getElementById("citizenship").value,
+        destination: document.getElementById("destination").value,
+        university_id: document.getElementById("university").value || null,
+        purpose: document.getElementById("purpose").value,
+        housing_type: document.getElementById("housing").value,
+        entry_via_rf: document.getElementById("viaRf").checked,
+        arrival_date: document.getElementById("arrival").value,
+      };
+      const res = await fetch("/api/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const plan = await res.json();
+
+      // Update header & summary strip
+      const routeText = `${plan.citizenship} → ${plan.destination}` + (plan.university_name ? ` · ${plan.university_name}` : "");
+      document.getElementById("header-route").textContent = routeText;
+      document.getElementById("params-summary").textContent =
+        `${routeText} · ${HOUSING_LABELS[plan.housing_type] || plan.housing_type}`
+        + (plan.entry_via_rf ? " · через РФ" : "")
+        + ` · с ${formatDateRu(plan.arrival_date)}`;
+
+      // Moment 1: Registration deadline highlight
+      const regStep = plan.steps.find(s => s.id === "registration");
+      const figEl = document.getElementById("moment-days");
+      const dateEl = document.getElementById("moment-date");
+      const methodEl = document.getElementById("moment-method");
+      const linkEl = document.getElementById("moment-link");
+
+      if (regStep) {
+        const isUrgent = !regStep.completed && regStep.days_left !== null && regStep.days_left <= 2;
+        figEl.classList.toggle("urgent", isUrgent);
+        if (regStep.completed) {
+          figEl.textContent = "Оформлена";
+          dateEl.textContent = `Срок был до ${formatDateRu(regStep.deadline_date)}`;
+        } else if (regStep.days_left !== null && regStep.days_left >= 0) {
+          figEl.textContent = `${regStep.days_left} ${daysWord(regStep.days_left)}`;
+          dateEl.textContent = `Крайний срок — ${formatDateRu(regStep.deadline_date)}`;
+        } else {
+          figEl.textContent = "Срок истёк";
+          dateEl.textContent = `Нужно было до ${formatDateRu(regStep.deadline_date)}`;
+        }
+
+        const rfBlocked = plan.destination === "BY" && plan.entry_via_rf;
+        methodEl.classList.toggle("urgent", rfBlocked);
+        methodEl.innerHTML = (rfBlocked ? ICONS.alert : ICONS.pin)
+          + `<span>${escapeHtml(regStep.location || "По месту пребывания")}</span>`;
+
+        if (regStep.action_url) {
+          linkEl.href = regStep.action_url;
+          linkEl.style.display = "inline-flex";
+          linkEl.querySelector("span").textContent = regStep.action_label || "Открыть портал";
+        } else {
+          linkEl.style.display = "none";
+        }
+      }
+
+      // Progress bar
+      const doneCount = plan.steps.filter(s => s.completed).length;
+      const totalCount = plan.steps.length;
+      document.getElementById("progress-label").textContent = `${doneCount} / ${totalCount}`;
+      document.getElementById("progress-fill").style.transform = `scaleX(${totalCount ? doneCount / totalCount : 0})`;
+
+      // Render route timeline
+      const container = document.getElementById("plan-steps");
+      container.innerHTML = plan.steps.map(s => {
+        const dueText = s.completed
+          ? "Готово"
+          : (s.days_left !== null ? (s.days_left >= 0 ? `${s.days_left} дн.` : "Просрочено") : "");
+        return `
+          <div class="step ${s.urgency}">
+            <div class="step-node" aria-hidden="true"></div>
+            <div class="step-head">
+              <input class="step-check" type="checkbox" ${s.completed ? "checked" : ""} onchange="toggleStep('${escapeHtml(s.id)}', this.checked)" aria-label="${escapeHtml(s.title)}" />
+              <div class="step-title">${escapeHtml(s.title)}</div>
+              ${dueText ? `<span class="step-due ${s.urgency}">${escapeHtml(dueText)}</span>` : ""}
+            </div>
+            <p class="step-desc">${escapeHtml(s.description)}</p>
+            <div class="step-meta-list">
+              ${s.location ? `<div class="meta-row">${ICONS.pin}<span>${escapeHtml(s.location)}</span></div>` : ""}
+              ${s.action_url ? `<div class="meta-row">${ICONS.link}<a href="${escapeHtml(s.action_url)}" target="_blank">${escapeHtml(s.action_label || s.action_url)}</a></div>` : ""}
+              ${s.source_title ? `<div class="meta-row">${ICONS.book}<span>${escapeHtml(s.source_title)}${s.verified_at ? " · проверено " + escapeHtml(formatDateRu(s.verified_at)) : ""}</span></div>` : ""}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      document.getElementById("plan-disclaimer").textContent = plan.disclaimer;
+    }
+
+    async function toggleStep(stepId, completed) {
+      await fetch("/api/plan/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tg_id: USER_ID, step_id: stepId, completed }),
+      });
+      loadPlan();
+    }
+
+    function initMap() {
+      if (mapInstance) { mapInstance.invalidateSize(); return; }
+      mapInstance = L.map("map").setView([55.1785, 30.2245], 14);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap",
+      }).addTo(mapInstance);
+      markersLayer = L.layerGroup().addTo(mapInstance);
+    }
+
+    document.getElementById("map-chips").addEventListener("click", (e) => {
+      const btn = e.target.closest(".filter-btn");
+      if (!btn) return;
+      if (btn.dataset.flag === "halal") {
+        filterHalal = !filterHalal;
+        btn.classList.toggle("active", filterHalal);
+      } else if (btn.dataset.flag === "accessible") {
+        filterAccessible = !filterAccessible;
+        btn.classList.toggle("active", filterAccessible);
+      } else {
+        activeMapCat = btn.dataset.cat || "";
+        document.querySelectorAll("#map-chips .filter-btn[data-cat]").forEach(c => c.classList.remove("active"));
+        btn.classList.add("active");
+      }
+      loadMapPoints();
+    });
+
+    async function loadMapPoints() {
+      const uniId = document.getElementById("university").value || "vsu_vitebsk";
+      const qs = new URLSearchParams({ university_id: uniId, halal: filterHalal, accessible: filterAccessible });
+      if (activeMapCat) qs.set("category", activeMapCat);
+      const res = await fetch("/api/map?" + qs.toString());
+      const data = await res.json();
+
+      document.getElementById("map-title").textContent = `Карта · ${data.city || "Витебск"}`;
+      document.getElementById("map-sub").textContent = data.university
+        ? `Ключевые точки рядом с ${data.university}`
+        : "Проверенные точки первых 48 часов";
+      document.getElementById("map-count").textContent = `${data.points.length}`;
+
+      if (mapInstance && markersLayer) {
+        markersLayer.clearLayers();
+        if (data.center) mapInstance.setView(data.center, 14);
+        data.points.forEach(p => {
+          const color = PIN_COLORS[p.category] || "#5E554A";
+          const pinIcon = L.divIcon({
+            className: "",
+            html: `<div class="atlas-pin" style="background:${color};"></div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+          });
+          L.marker([p.lat, p.lon], { icon: pinIcon })
+            .addTo(markersLayer)
+            .bindPopup(
+              `<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address)}`
+              + (p.hours ? `<br>${escapeHtml(p.hours)}` : "")
+              + `<br><a target="_blank" href="https://yandex.by/maps/?rtext=~${p.lat},${p.lon}">Построить маршрут</a>`
+            );
+        });
+      }
+
+      document.getElementById("map-list").innerHTML = data.points.map(p => `
+        <div class="place-row">
+          <div>
+            <div class="place-name">${escapeHtml(p.name)}</div>
+            <div class="place-meta">${escapeHtml(p.address)}${p.hours ? " · " + escapeHtml(p.hours) : ""}</div>
+            ${p.note ? `<div class="place-meta">${escapeHtml(p.note)}</div>` : ""}
+          </div>
+          <a class="route-link" target="_blank" href="https://yandex.by/maps/?rtext=~${p.lat},${p.lon}">
+            <span>Маршрут</span>
+            ${ICONS.link}
+          </a>
+        </div>
+      `).join("") || `<div class="card-sub">По выбранным фильтрам точек нет</div>`;
+    }
+
+    function quickAsk(text) {
+      document.getElementById("ai-input").value = text;
+      sendQuestion();
+    }
+
+    async function sendQuestion() {
+      const inp = document.getElementById("ai-input");
+      const q = inp.value.trim();
+      if (!q) return;
+      lastQuestion = q;
+      inp.value = "";
+
+      const box = document.getElementById("chat-box");
+      box.innerHTML += `<div class="msg user">${escapeHtml(q)}</div>`;
+      box.scrollTop = box.scrollHeight;
+
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: q,
+          destination: document.getElementById("destination").value,
+          university_id: document.getElementById("university").value || null,
+        }),
+      });
+      const data = await res.json();
+
+      let html = `<div>${escapeHtml(data.answer).replace(/\n/g, "<br>")}</div>`;
+      if (data.pii_redacted_count > 0) {
+        html += `<div class="pii-note">${ICONS.shield}<span>Личные данные (${data.pii_redacted_count}) скрыты до обработки</span></div>`;
+      }
+      if (data.sources && data.sources.length) {
+        html += `<div class="sources-box"><div>Источники</div>` + data.sources.map(
+          s => `<div><a target="_blank" href="${escapeHtml(s.source_url)}">${escapeHtml(s.source_title)}</a> · <span class="mono">${escapeHtml(formatDateRu(s.verified_at))}</span></div>`
+        ).join("") + `</div>`;
+      }
+      if (data.escalate_to_university) {
+        html += `<button class="btn btn-secondary btn-full" style="margin-top:12px;" onclick="sendTicket()">${ICONS.building}<span>Передать вопрос в международный отдел</span></button>`;
+      }
+      box.innerHTML += `<div class="msg bot">${html}</div>`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function sendTicket() {
+      const uniId = document.getElementById("university").value || "vsu_vitebsk";
+      const res = await fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tg_id: USER_ID, university_id: uniId, question: lastQuestion }),
+      });
+      const data = await res.json();
+      const box = document.getElementById("chat-box");
+      box.innerHTML += `<div class="msg bot"><div class="meta-row" style="color:var(--accent);">${ICONS.check}<span>Обращение <span class="mono">#${data.ticket_id}</span> передано в международный отдел вуза. Личные данные очищены.</span></div></div>`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function loadSosAndPhrases() {
+      const dest = document.getElementById("destination").value || "BY";
+      const uniId = document.getElementById("university").value || "";
+      const [sosRes, phrRes] = await Promise.all([
+        fetch(`/api/sos?destination=${encodeURIComponent(dest)}&university_id=${encodeURIComponent(uniId)}`),
+        fetch(`/api/phrasebook?destination=${encodeURIComponent(dest)}`),
+      ]);
+      const sos = await sosRes.json();
+      const phr = await phrRes.json();
+
+      let sosHtml = sos.contacts.map(c => `
+        <div class="sos-row">
+          <div>
+            <div class="place-name">${escapeHtml(c.title)}</div>
+            ${c.note ? `<div class="place-meta">${escapeHtml(c.note)}</div>` : ""}
+          </div>
+          <a class="sos-phone" href="tel:${escapeHtml(c.phone)}">${escapeHtml(c.phone)}</a>
+        </div>
+      `).join("");
+
+      if (sos.university_office) {
+        const u = sos.university_office;
+        sosHtml += `
+          <div class="sos-row">
+            <div>
+              <div class="place-name">${escapeHtml(u.name)} (${escapeHtml(u.university)})</div>
+              <div class="place-meta">${escapeHtml(u.address)} · ${escapeHtml(u.email)}</div>
+            </div>
+            <a class="sos-phone office" href="tel:${escapeHtml(u.phone)}">${escapeHtml(u.phone)}</a>
+          </div>
+        `;
+      }
+      document.getElementById("sos-list").innerHTML = sosHtml;
+
+      document.getElementById("phrase-list").innerHTML = phr.phrases.map(p => `
+        <div class="phrase-item">
+          <div class="phrase-tag">${escapeHtml(p.situation)}</div>
+          <div class="phrase-grid">
+            <span class="lang-code">RU</span><span>${escapeHtml(p.ru)}</span>
+            ${p.by ? `<span class="lang-code">BY</span><span>${escapeHtml(p.by)}</span>` : ""}
+            ${p.uz ? `<span class="lang-code">UZ</span><span>${escapeHtml(p.uz)}</span>` : ""}
+            ${p.en ? `<span class="lang-code">EN</span><span style="color:var(--text-2);">${escapeHtml(p.en)}</span>` : ""}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function deleteMyData() {
+      if (!confirm("Удалить настройки профиля и прогресс чек-листа из базы «Атлас»?")) return;
+      await fetch(`/api/user/${USER_ID}`, { method: "DELETE" });
+      alert("Данные профиля удалены в соответствии с Законом РБ № 99-З.");
+      location.reload();
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m]));
+    }
+
+    loadModules();
+  </script>
+</body>
+</html>

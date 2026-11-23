@@ -1,0 +1,317 @@
+from __future__ import annotations
+
+import logging
+from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+
+import ai
+from config import settings
+import db
+from loader import registry
+import monitor
+from rules import build_personal_plan
+
+logger = logging.getLogger("atlas.web")
+
+app = FastAPI(title="Атлас — ИИ-проводник для гостей Беларуси и Узбекистана", version="1.0.0")
+
+# Ссылка на запущенный Telegram-бот (подставляется из main.py для отправки ответов на тикеты)
+_active_bot = None
+
+
+def set_active_bot(bot) -> None:
+    global _active_bot
+    _active_bot = bot
+
+
+def _require_admin(x_admin_token: str | None) -> None:
+    if not x_admin_token or x_admin_token != settings.admin_token:
+        raise HTTPException(status_code=401, detail="Неверный токен администратора")
+
+
+# --- Страницы Mini App и Мини-кабинета вуза ---
+
+@app.get("/")
+@app.get("/app")
+async def serve_mini_app() -> FileResponse:
+    return FileResponse(settings.static_dir / "app.html")
+
+
+@app.get("/admin")
+async def serve_admin_panel() -> FileResponse:
+    return FileResponse(settings.static_dir / "admin.html")
+
+
+# --- Публичный API Mini App ---
+
+@app.get("/api/modules")
+async def get_modules() -> dict:
+    """Возвращает загруженные модули стран и вузов (демонстрация модульной архитектуры)."""
+    return {
+        "countries": [
+            {
+                "code": c.code,
+                "name": c.name,
+                "flag": c.flag,
+                "languages": c.languages,
+                "cards_count": len(c.cards),
+            }
+            for c in registry.countries.values()
+        ],
+        "universities": [
+            {
+                "id": u.id,
+                "name": u.name,
+                "short_name": u.short_name,
+                "country_code": u.country_code,
+                "city": u.city,
+                "map_center": u.map_center,
+                "international_office_name": u.international_office_name,
+                "international_office_address": u.international_office_address,
+                "international_office_phone": u.international_office_phone,
+                "points_count": len(u.map_points),
+                "cards_count": len(u.cards),
+            }
+            for u in registry.universities.values()
+        ],
+        "privacy": {
+            "zero_pii": True,
+            "pii_firewall": True,
+            "sovereign_llm": settings.is_sovereign_llm,
+            "law_ref": "Закон РБ № 99-З · Указ № 60 · ЗРУ-547 ст. 27-1",
+        },
+    }
+
+
+class PlanRequest(BaseModel):
+    tg_id: int = 10001  # Демо-ID при открытии вне Telegram
+    citizenship: str = "UZ"
+    destination: str = "BY"
+    university_id: str | None = "vsu_vitebsk"
+    purpose: str = "study"
+    housing_type: str = "dorm"
+    entry_via_rf: bool = False
+    arrival_date: str | None = None
+
+
+@app.post("/api/plan")
+async def save_and_build_plan(req: PlanRequest) -> dict:
+    await db.upsert_user(
+        req.tg_id,
+        consent_given=1,
+        citizenship=req.citizenship.upper(),
+        destination=req.destination.upper(),
+        university_id=req.university_id,
+        purpose=req.purpose,
+        housing_type=req.housing_type,
+        entry_via_rf=req.entry_via_rf,
+        arrival_date=req.arrival_date,
+    )
+    completed = await db.get_checklist_progress(req.tg_id)
+    plan = build_personal_plan(
+        citizenship=req.citizenship,
+        destination=req.destination,
+        university_id=req.university_id,
+        purpose=req.purpose,
+        housing_type=req.housing_type,
+        entry_via_rf=req.entry_via_rf,
+        arrival_date=req.arrival_date,
+        completed_map=completed,
+    )
+    await db.log_event("plan", university_id=req.university_id, country_code=req.destination.upper())
+    return plan.model_dump()
+
+
+class ToggleStepRequest(BaseModel):
+    tg_id: int = 10001
+    step_id: str
+    completed: bool
+
+
+@app.post("/api/plan/toggle")
+async def api_toggle_step(req: ToggleStepRequest) -> dict:
+    await db.toggle_step(req.tg_id, req.step_id, req.completed)
+    return {"ok": True}
+
+
+class AskRequest(BaseModel):
+    question: str
+    destination: str = "BY"
+    university_id: str | None = "vsu_vitebsk"
+    lang: str = "ru"
+
+
+@app.post("/api/ask")
+async def api_ask(req: AskRequest) -> dict:
+    res = await ai.ask_aist(
+        question=req.question,
+        destination=req.destination,
+        university_id=req.university_id,
+        lang=req.lang,
+    )
+    await db.log_event(
+        "ask",
+        university_id=req.university_id,
+        country_code=req.destination.upper(),
+        topic=res.topic,
+    )
+    return res.model_dump()
+
+
+@app.get("/api/map")
+async def api_map(
+    university_id: str = Query("vsu_vitebsk"),
+    category: str | None = Query(None),
+    halal: bool = Query(False),
+    accessible: bool = Query(False),
+) -> dict:
+    uni = registry.universities.get(university_id)
+    if not uni:
+        return {"center": [55.1904, 30.2049], "city": "Витебск", "points": []}
+    pts = uni.map_points
+    if category:
+        pts = [p for p in pts if p.category == category]
+    if halal:
+        pts = [p for p in pts if p.halal]
+    if accessible:
+        pts = [p for p in pts if p.accessible]
+    return {
+        "university": uni.short_name,
+        "city": uni.city,
+        "center": uni.map_center,
+        "points": [p.model_dump() for p in pts],
+    }
+
+
+@app.get("/api/phrasebook")
+async def api_phrasebook(destination: str = Query("BY")) -> dict:
+    country = registry.countries.get(destination.upper())
+    if not country:
+        return {"phrases": []}
+    return {"country": country.name, "phrases": [p.model_dump() for p in country.phrasebook]}
+
+
+@app.get("/api/sos")
+async def api_sos(
+    destination: str = Query("BY"),
+    university_id: str | None = Query("vsu_vitebsk"),
+) -> dict:
+    country = registry.countries.get(destination.upper())
+    uni = registry.universities.get(university_id) if university_id else None
+    return {
+        "country": country.name if country else destination,
+        "contacts": [c.model_dump() for c in country.sos_contacts] if country else [],
+        "university_office": (
+            {
+                "name": uni.international_office_name,
+                "university": uni.short_name,
+                "address": uni.international_office_address,
+                "phone": uni.international_office_phone,
+                "email": uni.international_office_email,
+            }
+            if uni
+            else None
+        ),
+    }
+
+
+class TicketRequest(BaseModel):
+    tg_id: int = 10001
+    university_id: str = "vsu_vitebsk"
+    question: str
+
+
+@app.post("/api/tickets")
+async def api_create_ticket(req: TicketRequest) -> dict:
+    clean_q, pii_hits = ai.scrub_pii(req.question)
+    ticket_id = await db.create_ticket(req.tg_id, req.university_id, clean_q)
+    uni = registry.universities.get(req.university_id)
+    await db.log_event(
+        "ticket",
+        university_id=req.university_id,
+        country_code=uni.country_code if uni else None,
+    )
+    return {"ticket_id": ticket_id, "pii_redacted_count": pii_hits, "question_scrubbed": clean_q}
+
+
+@app.delete("/api/user/{tg_id}")
+async def api_delete_user(tg_id: int) -> dict:
+    await db.delete_user_data(tg_id)
+    return {"deleted": True, "tg_id": tg_id}
+
+
+# --- API Мини-кабинета международного отдела вуза (/admin) ---
+
+@app.get("/api/admin/overview")
+async def admin_overview(x_admin_token: str | None = Header(None)) -> dict:
+    _require_admin(x_admin_token)
+    stats = await db.get_admin_stats()
+    tickets = await db.list_tickets(limit=30)
+    return {
+        "stats": stats,
+        "tickets": tickets,
+        "modules": {
+            "countries": [
+                {"code": c.code, "name": c.name, "cards": len(c.cards), "nla_sources": len(c.nla_sources)}
+                for c in registry.countries.values()
+            ],
+            "universities": [
+                {"id": u.id, "short_name": u.short_name, "city": u.city, "points": len(u.map_points), "cards": len(u.cards)}
+                for u in registry.universities.values()
+            ],
+        },
+        "security": {
+            "zero_pii": True,
+            "pii_firewall": True,
+            "llm_mode": (
+                "Локальный суверенный ИИ"
+                if settings.is_sovereign_llm
+                else ("Облачный API (обезличивание)" if settings.llm_api_key else "Локальная база знаний (без внешнего API)")
+            ),
+            "llm_base_url": settings.llm_base_url,
+        },
+    }
+
+
+class TicketReplyRequest(BaseModel):
+    reply_text: str
+
+
+@app.post("/api/admin/tickets/{ticket_id}/reply")
+async def admin_reply_ticket(
+    ticket_id: int,
+    req: TicketReplyRequest,
+    x_admin_token: str | None = Header(None),
+) -> dict:
+    _require_admin(x_admin_token)
+    ticket = await db.reply_ticket(ticket_id, req.reply_text)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Тикет не найден")
+
+    delivered = False
+    if _active_bot is not None and ticket["tg_id"] > 100000:
+        try:
+            await _active_bot.send_message(
+                ticket["tg_id"],
+                f"🏛 <b>Ответ международного отдела вуза (обращение #{ticket_id}):</b>\n\n{req.reply_text}",
+                parse_mode="HTML",
+            )
+            delivered = True
+        except Exception as exc:
+            logger.warning("Не удалось доставить ответ в Telegram: %s", exc)
+    return {"ok": True, "ticket": ticket, "delivered_to_telegram": delivered}
+
+
+@app.post("/api/admin/reload")
+async def admin_reload_modules(x_admin_token: str | None = Header(None)) -> dict:
+    _require_admin(x_admin_token)
+    counts = registry.reload()
+    return {"ok": True, "loaded": counts}
+
+
+@app.post("/api/admin/check-nla")
+async def admin_check_nla(x_admin_token: str | None = Header(None)) -> dict:
+    _require_admin(x_admin_token)
+    results = await monitor.check_nla_sources()
+    return {"ok": True, "checked": results}
