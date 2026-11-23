@@ -4,163 +4,992 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Атлас — Кабинет международного отдела вуза</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --emerald: #0E4D40; --crimson: #B71C2C; --gold: #D49B1A;
-      --bg: #F3F6F5; --card: #FFFFFF; --text: #1B2422; --muted: #5F6F6B; --border: #DCE5E2;
+      /* Warm paper neutral ramp — identical to Atlas Mini App */
+      --bg: #F7F4EE;
+      --sidebar: #F2EDE4;
+      --surface: #FDFBF7;
+      --raised: #EFE9DF;
+      --border: rgba(31, 27, 22, 0.08);
+      --border-strong: rgba(31, 27, 22, 0.16);
+      --text-1: #1F1B16;
+      --text-2: #5E554A;
+      --text-3: #7B7266;
+
+      /* Brand & semantic */
+      --accent: #0E4D40;
+      --accent-hover: #0A3B31;
+      --accent-soft: rgba(14, 77, 64, 0.08);
+      --urgent: #B71C2C;
+      --urgent-soft: rgba(183, 28, 44, 0.08);
+      --ok: #15803D;
+
+      --shadow-sm: 0 1px 2px rgba(31, 27, 22, 0.05);
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+      --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-display: "Newsreader", Georgia, serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
     }
+
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
-    header { background: var(--emerald); color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    header h1 { margin: 0; font-size: 20px; }
-    header .sub { font-size: 12px; color: #C5DFD8; }
-    main { max-width: 1080px; margin: 20px auto; padding: 0 16px 40px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 18px; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
-    .card h2 { margin: 0 0 12px 0; font-size: 16px; color: var(--emerald); }
-    .kpi { font-size: 28px; font-weight: 800; color: var(--emerald); }
-    .kpi.red { color: var(--crimson); }
-    .muted { font-size: 12px; color: var(--muted); }
-    .pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #E6F2EF; color: var(--emerald); margin-right: 6px; margin-bottom: 6px; }
-    .pill.warn { background: #FDE8EA; color: var(--crimson); }
-    .btn { border: none; border-radius: 9px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; background: var(--emerald); color: #fff; }
-    .btn.secondary { background: #fff; color: var(--emerald); border: 1px solid var(--emerald); }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-    input[type="text"], input[type="password"] { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
-    .auth-bar { display: flex; gap: 8px; align-items: center; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 400;
+      background: var(--bg);
+      color: var(--text-1);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input {
+      font-family: inherit;
+      font-size: 14px;
+      color: inherit;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .icon {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* App shell */
+    .shell {
+      display: grid;
+      grid-template-columns: 248px 1fr;
+      min-height: 100vh;
+    }
+
+    @media (max-width: 960px) {
+      .shell { grid-template-columns: 1fr; }
+      aside { display: none; }
+    }
+
+    /* Left sidebar */
+    aside {
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 8px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-mark {
+      width: 12px;
+      height: 12px;
+      flex: 0 0 12px;
+      background: var(--accent);
+      transform: rotate(45deg);
+      border-radius: 2px;
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 500;
+      margin: 0;
+      color: var(--text-1);
+    }
+
+    .brand-role {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      margin-top: 2px;
+    }
+
+    .nav-group {
+      margin-top: 24px;
+    }
+
+    .nav-label {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      padding: 0 8px 8px;
+    }
+
+    .nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 36px;
+      padding: 0 8px;
+      border-radius: 8px;
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 400;
+      transition: background-color 140ms var(--ease), color 140ms var(--ease);
+    }
+
+    .nav-link:hover {
+      background: var(--raised);
+      color: var(--text-1);
+    }
+
+    .nav-link.active {
+      background: var(--surface);
+      color: var(--accent);
+      font-weight: 500;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .sidebar-foot {
+      padding: 12px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .sidebar-foot-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .sidebar-foot-sub {
+      margin-top: 4px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+    }
+
+    /* Main content area */
+    .workspace {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    header {
+      height: 64px;
+      padding: 0 32px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    @media (max-width: 720px) {
+      header { padding: 12px 16px; height: auto; flex-wrap: wrap; }
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: 16px;
+      line-height: 22px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .page-sub {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+    }
+
+    .auth-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    input[type="text"], input[type="password"] {
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text-1);
+      font-size: 13px;
+      transition: border-color 140ms var(--ease);
+    }
+
+    input:hover { border-color: rgba(31, 27, 22, 0.28); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-size: 13px;
+      line-height: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background-color 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease), transform 120ms var(--ease);
+    }
+
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #FFFFFF;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-secondary {
+      background: var(--raised);
+      border-color: var(--border-strong);
+      color: var(--text-1);
+    }
+
+    .btn-secondary:hover { background: #E6DED1; }
+
+    /* Content grid */
+    main {
+      width: 100%;
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 24px 32px 48px;
+    }
+
+    @media (max-width: 720px) {
+      main { padding: 16px 16px 40px; }
+    }
+
+    /* Inline status toast */
+    .notice {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(14, 77, 64, 0.2);
+      color: var(--accent);
+      font-size: 13px;
+      line-height: 20px;
+    }
+
+    .notice.error {
+      background: var(--urgent-soft);
+      border-color: rgba(183, 28, 44, 0.24);
+      color: var(--urgent);
+    }
+
+    .notice.visible { display: flex; }
+
+    /* KPI Row */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 860px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+    }
+
+    .kpi-value {
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 32px;
+      line-height: 1;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .kpi-value.accent { color: var(--accent); }
+    .kpi-value.urgent { color: var(--urgent); }
+
+    .kpi-note {
+      margin-top: 8px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+    }
+
+    /* Asymmetric 2-column desktop layout */
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1.8fr) minmax(300px, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 1080px) {
+      .split { grid-template-columns: 1fr; }
+    }
+
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      min-width: 0;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 16px;
+      line-height: 22px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .card-sub {
+      margin: 4px 0 0 0;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--text-2);
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      line-height: 20px;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 500;
+      color: var(--text-3);
+      border-bottom: 1px solid var(--border-strong);
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-1);
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    tbody tr {
+      transition: background-color 140ms var(--ease);
+    }
+
+    tbody tr:hover {
+      background: rgba(31, 27, 22, 0.02);
+    }
+
+    td a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    td a:hover { text-decoration: underline; }
+
+    .num-col {
+      text-align: right;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* Quiet status indicators (diamond signature dot + plain text) */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 500;
+      color: var(--text-2);
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      transform: rotate(45deg);
+      border-radius: 1px;
+      background: var(--accent);
+      flex: 0 0 6px;
+    }
+
+    .status.warn { color: var(--urgent); }
+    .status.warn .status-dot { background: var(--urgent); }
+    .status.muted .status-dot { background: var(--text-3); }
+
+    .reply-form {
+      display: flex;
+      gap: 8px;
+      min-width: 240px;
+    }
+
+    .reply-form input { flex: 1; }
+
+    /* Module list (right rail) */
+    .layer-title {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      margin: 16px 0 8px;
+    }
+
+    .layer-title:first-child { margin-top: 0; }
+
+    .mod-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+
+    .mod-row:last-child { margin-bottom: 0; }
+
+    .mod-name {
+      font-size: 13px;
+      line-height: 18px;
+      font-weight: 500;
+      color: var(--text-1);
+    }
+
+    .mod-sub {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+    }
+
+    .mod-stat {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      color: var(--text-2);
+      white-space: nowrap;
+    }
+
+    /* Ranked horizontal bar chart for anonymous topics */
+    .topic-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .topic-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .topic-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      line-height: 18px;
+    }
+
+    .topic-track {
+      height: 6px;
+      border-radius: 4px;
+      background: var(--raised);
+      overflow: hidden;
+    }
+
+    .topic-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--text-3);
+      transform-origin: left center;
+      transition: transform 280ms var(--ease);
+    }
+
+    .topic-row:first-child .topic-fill {
+      background: var(--accent);
+    }
+
+    /* Security spec list */
+    .spec-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .spec-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      line-height: 18px;
+    }
+
+    .spec-row:first-child { border-top: none; padding-top: 0; }
+    .spec-row:last-child { padding-bottom: 0; }
+
+    .spec-key { color: var(--text-3); }
+    .spec-val { color: var(--text-1); font-weight: 500; text-align: right; }
+
+    .empty-note {
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--text-3);
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1>🏛 Атлас — Кабинет международного отдела вуза</h1>
-      <div class="sub">Модульная платформа адаптации иностранных студентов для университетов Беларуси</div>
-    </div>
-    <div class="auth-bar">
-      <input type="password" id="token" value="atlas-vsu-2026" placeholder="Токен админа" />
-      <button class="btn secondary" onclick="loadOverview()">Войти / Обновить</button>
-    </div>
-  </header>
+  <div class="shell">
+    <aside aria-label="Навигация кабинета">
+      <div>
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div>
+            <div class="brand-title">Атлас</div>
+            <div class="brand-role">Кабинет вуза</div>
+          </div>
+        </div>
 
-  <main>
-    <div id="security-bar" class="card">
-      <h2>🔒 Конфиденциальность и соответствие законодательству</h2>
-      <div id="security-pills">Загрузка…</div>
-    </div>
+        <div class="nav-group">
+          <div class="nav-label">Управление</div>
+          <nav class="nav-list">
+            <a class="nav-link active" href="#section-kpi">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              <span>Обзор</span>
+            </a>
+            <a class="nav-link" href="#section-tickets">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>Обращения</span>
+            </a>
+            <a class="nav-link" href="#section-nla">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+              <span>Мониторинг НПА</span>
+            </a>
+            <a class="nav-link" href="#section-modules">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              <span>Модули данных</span>
+            </a>
+          </nav>
+        </div>
 
-    <div class="grid">
-      <div class="card"><div class="muted">Пользователей (обезличенно)</div><div class="kpi" id="kpi-users">—</div></div>
-      <div class="card"><div class="muted">Вопросов к AIst / Лайлак</div><div class="kpi" id="kpi-asks">—</div></div>
-      <div class="card"><div class="muted">Открытых обращений в вуз</div><div class="kpi red" id="kpi-tickets">—</div></div>
-    </div>
-
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-        <h2 style="margin:0;">🧩 Подключённые модули (Страны + Вузы)</h2>
-        <button class="btn" onclick="reloadModules()">↻ Перезагрузить модули из data/</button>
+        <div class="nav-group">
+          <div class="nav-label">Приложение гостя</div>
+          <nav class="nav-list">
+            <a class="nav-link" href="/app" target="_blank">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+              <span>Открыть Mini App</span>
+            </a>
+          </nav>
+        </div>
       </div>
-      <div class="muted" style="margin-bottom:10px;">Чтобы подключить новый вуз Беларуси или новую страну (Китай, Туркменистан, Индия), достаточно добавить JSON-файл в папку <code>data/</code> и нажать «Перезагрузить».</div>
-      <div id="modules-list"></div>
-    </div>
 
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-        <h2 style="margin:0;">📡 Автоматический мониторинг НПА</h2>
-        <button class="btn secondary" onclick="checkNlaNow()">Проверить источники сейчас</button>
+      <div class="sidebar-foot">
+        <div class="sidebar-foot-title">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>Контур 99-З · Указ № 60</span>
+        </div>
+        <div class="sidebar-foot-sub">База Zero-PII, локальный Privacy Firewall перед ИИ</div>
       </div>
-      <table>
-        <thead><tr><th>Страна</th><th>Источник</th><th>HTTP</th><th>Статус</th><th>Последняя проверка</th></tr></thead>
-        <tbody id="nla-table"></tbody>
-      </table>
-    </div>
+    </aside>
 
-    <div class="card">
-      <h2>📩 Обращения студентов в международный отдел (очищены от ПД)</h2>
-      <table>
-        <thead><tr><th>#</th><th>Вуз</th><th>Вопрос (Privacy Firewall)</th><th>Статус / Ответ</th></tr></thead>
-        <tbody id="tickets-table"></tbody>
-      </table>
-    </div>
+    <div class="workspace">
+      <header>
+        <div>
+          <h1 class="page-title">Кабинет международного отдела</h1>
+          <div class="page-sub">Модульная платформа адаптации иностранных студентов · ВГУ им. П. М. Машерова</div>
+        </div>
+        <div class="auth-bar">
+          <input type="password" id="token" value="atlas-vsu-2026" placeholder="Токен доступа" aria-label="Токен администратора" />
+          <button class="btn btn-secondary" onclick="loadOverview()">Обновить</button>
+        </div>
+      </header>
 
-    <div class="card">
-      <h2>📊 Обезличенная статистика частых тем</h2>
-      <div id="topics-list"></div>
+      <main>
+        <div id="notice" class="notice" role="status">
+          <span id="notice-text"></span>
+          <button class="btn btn-secondary" style="height:28px; padding:0 10px;" onclick="hideNotice()">Скрыть</button>
+        </div>
+
+        <!-- KPI Row -->
+        <section id="section-kpi" class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Пользователи</div>
+            <div class="kpi-value" id="kpi-users">—</div>
+            <div class="kpi-note">Обезличенные профили</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Вопросов к AIst</div>
+            <div class="kpi-value accent" id="kpi-asks">—</div>
+            <div class="kpi-note">Ответы по базе знаний</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Открытые обращения</div>
+            <div class="kpi-value" id="kpi-tickets">—</div>
+            <div class="kpi-note">Ожидают ответа отдела</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Подключённые модули</div>
+            <div class="kpi-value" id="kpi-modules">—</div>
+            <div class="kpi-note" id="kpi-modules-note">Страны и университеты</div>
+          </div>
+        </section>
+
+        <!-- Asymmetric 2-column content -->
+        <div class="split">
+          <!-- Left primary column -->
+          <div class="col">
+            <section id="section-tickets" class="card">
+              <div class="card-head">
+                <div>
+                  <h2 class="card-title">Обращения студентов в международный отдел</h2>
+                  <p class="card-sub">Вопросы, в которых ассистент не стал угадывать. Личные данные очищены фильтром до сохранения</p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Номер</th>
+                      <th>Модуль вуза</th>
+                      <th>Вопрос (обезличен)</th>
+                      <th>Статус и ответ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tickets-table"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section id="section-nla" class="card">
+              <div class="card-head">
+                <div>
+                  <h2 class="card-title">Автоматический мониторинг НПА</h2>
+                  <p class="card-sub">Проверка контрольных хэшей официальных порталов Беларуси и Узбекистана</p>
+                </div>
+                <button class="btn btn-secondary" onclick="checkNlaNow()">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                  <span>Проверить источники</span>
+                </button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Страна</th>
+                      <th>Источник</th>
+                      <th class="num-col">Код</th>
+                      <th>Состояние</th>
+                      <th class="num-col">Проверка</th>
+                    </tr>
+                  </thead>
+                  <tbody id="nla-table"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- Right rail -->
+          <div class="col">
+            <section id="section-modules" class="card">
+              <div class="card-head">
+                <div>
+                  <h2 class="card-title">Модули данных</h2>
+                  <p class="card-sub">Новый вуз или страна подключаются одним JSON-файлом в папке <span class="mono">data/</span></p>
+                </div>
+                <button class="btn btn-primary" onclick="reloadModules()">Перезагрузить</button>
+              </div>
+              <div id="modules-list"></div>
+            </section>
+
+            <section class="card">
+              <div class="card-head">
+                <div>
+                  <h2 class="card-title">Частые темы обращений</h2>
+                  <p class="card-sub">Обезличенная статистика запросов к ассистенту</p>
+                </div>
+              </div>
+              <div id="topics-list" class="topic-list"></div>
+            </section>
+
+            <section class="card">
+              <div class="card-head">
+                <div>
+                  <h2 class="card-title">Контур конфиденциальности</h2>
+                  <p class="card-sub">Текущие параметры обработки данных</p>
+                </div>
+              </div>
+              <div id="security-spec" class="spec-list"></div>
+            </section>
+          </div>
+        </div>
+      </main>
     </div>
-  </main>
+  </div>
 
   <script>
+    const TOPIC_LABELS = {
+      migration: "Миграция и регистрация",
+      university: "Учёба и общежитие",
+      culture: "Культура и питание",
+      finance: "Банки, SIM и ЕРИП",
+      medicine: "Медицина и страховка",
+      unanswered: "Передано в вуз",
+      general: "Общие вопросы",
+    };
+
     function headers() {
-      return { "Content-Type": "application/json", "X-Admin-Token": document.getElementById("token").value };
+      return {
+        "Content-Type": "application/json",
+        "X-Admin-Token": document.getElementById("token").value,
+      };
+    }
+
+    function showNotice(text, isError = false) {
+      const box = document.getElementById("notice");
+      document.getElementById("notice-text").textContent = text;
+      box.classList.toggle("error", isError);
+      box.classList.add("visible");
+    }
+
+    function hideNotice() {
+      document.getElementById("notice").classList.remove("visible");
+    }
+
+    function formatStamp(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso.slice(0, 16);
+      return d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     }
 
     async function loadOverview() {
       const res = await fetch("/api/admin/overview", { headers: headers() });
-      if (!res.ok) { alert("Неверный токен администратора (см. ADMIN_TOKEN в .env)"); return; }
+      if (!res.ok) {
+        showNotice("Неверный токен администратора — проверьте ADMIN_TOKEN в файле .env", true);
+        return;
+      }
       const data = await res.json();
 
+      // KPIs
       document.getElementById("kpi-users").textContent = data.stats.users_count;
       document.getElementById("kpi-asks").textContent = data.stats.total_questions;
-      document.getElementById("kpi-tickets").textContent = data.stats.open_tickets;
+      const openEl = document.getElementById("kpi-tickets");
+      openEl.textContent = data.stats.open_tickets;
+      openEl.classList.toggle("urgent", data.stats.open_tickets > 0);
 
-      document.getElementById("security-pills").innerHTML = `
-        <span class="pill">Zero-PII БД (нет ФИО/паспортов)</span>
-        <span class="pill">Privacy Firewall перед ИИ</span>
-        <span class="pill">Режим ИИ: ${data.security.llm_mode}</span>
-        <span class="pill">Закон РБ № 99-З · Указ № 60</span>
+      const cCount = data.modules.countries.length;
+      const uCount = data.modules.universities.length;
+      document.getElementById("kpi-modules").textContent = cCount + uCount;
+      document.getElementById("kpi-modules-note").textContent = `Стран: ${cCount} · Вузов: ${uCount}`;
+
+      // Modules list (2 layers)
+      const cRows = data.modules.countries.map(c => `
+        <div class="mod-row">
+          <div>
+            <div class="mod-name">${escapeHtml(c.name)} <span class="mono" style="color:var(--text-3);">${escapeHtml(c.code)}</span></div>
+            <div class="mod-sub">Источников НПА: ${c.nla_sources}</div>
+          </div>
+          <div class="mod-stat">${c.cards} карт.</div>
+        </div>
+      `).join("");
+
+      const uRows = data.modules.universities.map(u => `
+        <div class="mod-row">
+          <div>
+            <div class="mod-name">${escapeHtml(u.short_name)}</div>
+            <div class="mod-sub">${escapeHtml(u.city)} · ${escapeHtml(u.id)}</div>
+          </div>
+          <div class="mod-stat">${u.points} точек</div>
+        </div>
+      `).join("");
+
+      document.getElementById("modules-list").innerHTML =
+        `<div class="layer-title">Слой 1 · Страны</div>${cRows}`
+        + `<div class="layer-title">Слой 2 · Университеты и города</div>${uRows}`;
+
+      // Security spec
+      document.getElementById("security-spec").innerHTML = `
+        <div class="spec-row"><span class="spec-key">Хранилище</span><span class="spec-val">Zero-PII (SQLite)</span></div>
+        <div class="spec-row"><span class="spec-key">Фильтр до ИИ</span><span class="spec-val">Privacy Firewall активен</span></div>
+        <div class="spec-row"><span class="spec-key">Режим ИИ</span><span class="spec-val">${escapeHtml(data.security.llm_mode)}</span></div>
+        <div class="spec-row"><span class="spec-key">Нормативы</span><span class="spec-val">Закон РБ № 99-З · Указ № 60</span></div>
       `;
 
-      const cHtml = data.modules.countries.map(c => `<span class="pill">🌍 ${c.code} · ${c.name} (${c.cards} карточек, ${c.nla_sources} НПА)</span>`).join("");
-      const uHtml = data.modules.universities.map(u => `<span class="pill">🏛 ${u.short_name} · ${u.city} (${u.points} точек карты, ${u.cards} карточек)</span>`).join("");
-      document.getElementById("modules-list").innerHTML = `<div>${cHtml}</div><div style="margin-top:6px;">${uHtml}</div>`;
-
+      // NLA Monitor table
       document.getElementById("nla-table").innerHTML = data.stats.nla_snapshots.map(n => `
         <tr>
-          <td>${n.country_code}</td>
-          <td><a href="${n.url}" target="_blank">${n.name}</a></td>
-          <td>${n.http_status}</td>
-          <td>${n.changed ? '<span class="pill warn">⚠️ Изменилось! Проверить базу</span>' : '<span class="pill">OK</span>'}</td>
-          <td class="muted">${n.last_checked}</td>
+          <td class="mono">${escapeHtml(n.country_code)}</td>
+          <td><a href="${escapeHtml(n.url)}" target="_blank">${escapeHtml(n.name)}</a></td>
+          <td class="num-col">${n.http_status || "—"}</td>
+          <td>
+            ${n.changed
+              ? '<span class="status warn"><span class="status-dot"></span>Обнаружены изменения</span>'
+              : '<span class="status"><span class="status-dot"></span>Актуально</span>'}
+          </td>
+          <td class="num-col" style="color:var(--text-3);">${escapeHtml(formatStamp(n.last_checked))}</td>
         </tr>
-      `).join("") || `<tr><td colspan="5" class="muted">Нажмите «Проверить источники сейчас» для первого снимка.</td></tr>`;
+      `).join("") || `<tr><td colspan="5" class="empty-note">Нажмите «Проверить источники», чтобы снять контрольные хэши порталов НПА</td></tr>`;
 
+      // Student tickets table
       document.getElementById("tickets-table").innerHTML = data.tickets.map(t => `
         <tr>
-          <td>#${t.id}</td>
-          <td>${t.university_id}</td>
-          <td>${t.question_scrubbed}</td>
+          <td class="mono">#${t.id}</td>
+          <td class="mono" style="color:var(--text-2);">${escapeHtml(t.university_id)}</td>
+          <td>${escapeHtml(t.question_scrubbed)}</td>
           <td>
             ${t.status === "answered"
-              ? `<span class="pill">Отвечено</span><div class="muted">${t.reply_text}</div>`
-              : `<div style="display:flex; gap:6px;"><input type="text" id="reply-${t.id}" placeholder="Ответ специалиста..." style="flex:1;" /><button class="btn" onclick="replyTicket(${t.id})">Отправить</button></div>`}
+              ? `<span class="status"><span class="status-dot"></span>Отвечено</span><div style="margin-top:4px; color:var(--text-2); font-size:12px;">${escapeHtml(t.reply_text || "")}</div>`
+              : `<div class="reply-form"><input type="text" id="reply-${t.id}" placeholder="Ответ специалиста" /><button class="btn btn-primary" onclick="replyTicket(${t.id})">Отправить</button></div>`}
           </td>
         </tr>
-      `).join("") || `<tr><td colspan="4" class="muted">Пока нет открытых обращений.</td></tr>`;
+      `).join("") || `<tr><td colspan="4" class="empty-note">Открытых обращений пока нет</td></tr>`;
 
-      document.getElementById("topics-list").innerHTML = data.stats.top_topics.map(
-        t => `<span class="pill">${t.topic}: ${t.cnt}</span>`
-      ).join("") || `<div class="muted">Данных пока нет.</div>`;
+      // Ranked bar chart for top topics
+      const topics = data.stats.top_topics || [];
+      const maxCnt = topics.length ? Math.max(...topics.map(t => t.cnt), 1) : 1;
+      document.getElementById("topics-list").innerHTML = topics.map(t => `
+        <div class="topic-row">
+          <div class="topic-meta">
+            <span>${escapeHtml(TOPIC_LABELS[t.topic] || t.topic)}</span>
+            <span class="mono" style="color:var(--text-2);">${t.cnt}</span>
+          </div>
+          <div class="topic-track">
+            <div class="topic-fill" style="transform: scaleX(${t.cnt / maxCnt});"></div>
+          </div>
+        </div>
+      `).join("") || `<div class="empty-note">Статистика появится после первых вопросов к ассистенту</div>`;
     }
 
     async function replyTicket(id) {
-      const text = document.getElementById("reply-" + id).value.trim();
+      const inp = document.getElementById("reply-" + id);
+      const text = inp ? inp.value.trim() : "";
       if (!text) return;
       const res = await fetch(`/api/admin/tickets/${id}/reply`, {
-        method: "POST", headers: headers(), body: JSON.stringify({ reply_text: text })
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ reply_text: text }),
       });
-      if (res.ok) loadOverview();
+      if (res.ok) {
+        showNotice(`Ответ на обращение #${id} сохранён и отправлен студенту`);
+        loadOverview();
+      } else {
+        showNotice("Не удалось отправить ответ", true);
+      }
     }
 
     async function reloadModules() {
       const res = await fetch("/api/admin/reload", { method: "POST", headers: headers() });
+      if (!res.ok) { showNotice("Ошибка перезагрузки модулей", true); return; }
       const data = await res.json();
-      alert(`Модули обновлены: стран — ${data.loaded.countries}, вузов — ${data.loaded.universities}`);
+      showNotice(`Модули обновлены из папки data/: стран — ${data.loaded.countries}, вузов — ${data.loaded.universities}`);
       loadOverview();
     }
 
     async function checkNlaNow() {
-      await fetch("/api/admin/check-nla", { method: "POST", headers: headers() });
+      showNotice("Проверяем официальные порталы НПА...");
+      const res = await fetch("/api/admin/check-nla", { method: "POST", headers: headers() });
+      if (!res.ok) { showNotice("Не удалось выполнить проверку НПА", true); return; }
+      showNotice("Проверка источников НПА завершена");
       loadOverview();
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m]));
     }
 
     loadOverview();
