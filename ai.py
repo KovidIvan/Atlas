@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from openai import AsyncOpenAI
 
-from config import settings
+from config import persist_llm_config, settings
 from loader import registry
 
 logger = logging.getLogger("atlas.ai")
@@ -711,12 +711,28 @@ async def ask_aist(
     )
 
     try:
-        resp = await client.chat.completions.create(
-            model=settings.llm_model,
-            temperature=0.1,
-            max_tokens=700,
-            messages=messages,
-        )
+        try:
+            resp = await client.chat.completions.create(
+                model=settings.llm_model,
+                temperature=0.1,
+                max_tokens=1400,
+                messages=messages,
+            )
+        except Exception as first_err:
+            if "404" in str(first_err) or "model_not_found" in str(first_err):
+                alt_model = await _discover_active_chat_model(client)
+                if alt_model:
+                    persist_llm_config(settings.llm_base_url, None, alt_model, settings.llm_vision_model)
+                    resp = await client.chat.completions.create(
+                        model=settings.llm_model,
+                        temperature=0.1,
+                        max_tokens=1400,
+                        messages=messages,
+                    )
+                else:
+                    raise
+            else:
+                raise
         raw_content = resp.choices[0].message.content or ""
         answer_text, used_ids, confident = _parse_llm_output(raw_content, set(chunks_by_id.keys()))
         if confident and answer_text and not used_ids:
@@ -817,7 +833,7 @@ async def translate_photo_bytes(image_bytes: bytes, target_lang: str = "ru") -> 
         resp = await client.chat.completions.create(
             model=vision_model,
             temperature=0.1,
-            max_tokens=450,
+            max_tokens=900,
             messages=[
                 {
                     "role": "user",
@@ -837,12 +853,31 @@ async def translate_photo_bytes(image_bytes: bytes, target_lang: str = "ru") -> 
         logger.warning("Ошибка Vision API (%s): %s", vision_model, exc)
         return (
             f"Текущая Vision-модель ({vision_model}) не смогла обработать изображение. "
-            "Для бесплатного перевода фото выберите в /admin пресет Groq (meta-llama/llama-4-scout-17b-16e-instruct) или Google Gemini (gemini-2.5-flash)."
+            "Для бесплатного перевода фото укажите в /admin модель qwen/qwen3.8-27b (Groq) или gemini-2.5-flash (Gemini)."
         )
 
 
+async def _discover_active_chat_model(client: AsyncOpenAI) -> str | None:
+    """Если указанная модель устарела (404), запрашивает список доступных моделей у провайдера и выбирает лучшую."""
+    try:
+        models_page = await client.models.list()
+        ids = [m.id for m in models_page.data if getattr(m, "id", "")]
+        skip_words = ("whisper", "tts", "guard", "safeguard", "embed", "moderation", "orpheus")
+        chat_ids = [m for m in ids if not any(sw in m.lower() for sw in skip_words)]
+        for preferred in ("openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b", "gemini-2.5-flash", "openrouter/free"):
+            if preferred in chat_ids:
+                return preferred
+        for kw in ("gpt-oss", "qwen3", "gemini", "llama", "deepseek"):
+            for m in chat_ids:
+                if kw in m.lower():
+                    return m
+        return chat_ids[0] if chat_ids else None
+    except Exception:
+        return None
+
+
 async def test_llm_connection() -> tuple[bool, str]:
-    """Проверяет работоспособность настроенного API-ключа и модели коротким пингом."""
+    """Проверяет работоспособность настроенного API-ключа и при 404 автоматически подбирает актуальную модель."""
     client = _llm_client()
     if client is None:
         return True, "Внешний API-ключ не задан — активен автономный гибридный BM25 RAG по локальной базе"
@@ -850,10 +885,25 @@ async def test_llm_connection() -> tuple[bool, str]:
         resp = await client.chat.completions.create(
             model=settings.llm_model,
             temperature=0.0,
-            max_tokens=24,
+            max_tokens=256,
             messages=[{"role": "user", "content": "Ответь одним словом: ОК"}],
         )
-        reply = (resp.choices[0].message.content or "").strip()
-        return True, f"Соединение успешно ({settings.llm_model}): {reply[:40]}"
+        reply = re.sub(r"<think>.*?</think>", "", resp.choices[0].message.content or "", flags=re.S).strip()
+        return True, f"Соединение успешно ({settings.llm_model}): {reply[:40] or 'ОК'}"
     except Exception as exc:
+        if "404" in str(exc) or "model_not_found" in str(exc):
+            alt = await _discover_active_chat_model(client)
+            if alt:
+                persist_llm_config(settings.llm_base_url, None, alt, settings.llm_vision_model)
+                try:
+                    resp2 = await client.chat.completions.create(
+                        model=alt,
+                        temperature=0.0,
+                        max_tokens=256,
+                        messages=[{"role": "user", "content": "Ответь одним словом: ОК"}],
+                    )
+                    reply2 = re.sub(r"<think>.*?</think>", "", resp2.choices[0].message.content or "", flags=re.S).strip()
+                    return True, f"Автоматически выбрана актуальная модель {alt} — соединение успешно ({reply2[:30] or 'ОК'})"
+                except Exception as exc2:
+                    return False, f"Ошибка подключения ({alt}): {exc2}"
         return False, f"Ошибка подключения к {settings.llm_base_url} ({settings.llm_model}): {exc}"

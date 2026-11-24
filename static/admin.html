@@ -822,8 +822,8 @@
               <div style="display:flex; flex-direction:column; gap:8px;">
                 <input type="text" id="llm-url" placeholder="Base URL (например, https://api.groq.com/openai/v1)" />
                 <input type="password" id="llm-key" placeholder="API-ключ (оставьте пустым, чтобы не менять сохранённый)" />
-                <input type="text" id="llm-model" placeholder="Текстовая модель (llama-3.3-70b-versatile)" />
-                <input type="text" id="llm-vision" placeholder="Vision-модель для вывесок" />
+                <input type="text" id="llm-model" placeholder="Текстовая модель (openai/gpt-oss-120b)" />
+                <input type="text" id="llm-vision" placeholder="Vision-модель (qwen/qwen3.8-27b)" />
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">
                   <button type="button" class="btn btn-primary" style="flex:1;" onclick="saveAndTestLlm(false)">Проверить и сохранить</button>
                   <button type="button" class="btn btn-secondary" onclick="saveAndTestLlm(true)" title="Перевести в автономный режим без внешнего ключа">Сбросить ключ</button>
@@ -1009,8 +1009,8 @@
     const LLM_PRESETS = {
       groq: {
         url: "https://api.groq.com/openai/v1",
-        model: "llama-3.3-70b-versatile",
-        vision: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: "openai/gpt-oss-120b",
+        vision: "qwen/qwen3.8-27b",
       },
       gemini: {
         url: "https://generativelanguage.googleapis.com/v1beta/openai/",
