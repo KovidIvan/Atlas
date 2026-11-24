@@ -526,39 +526,140 @@ def _llm_client() -> AsyncOpenAI | None:
     )
 
 
-def _parse_llm_output(raw: str, valid_ids: set[str]) -> tuple[str, list[str], bool]:
-    """
-    Надёжный парсер ответов любых моделей (Groq, Gemini, OpenRouter Free, DeepSeek-R1, Qwen, Ollama):
-    очищает <think>...</think>, markdown-блоки ```json и умеет работать даже если бесплатная модель
-    вернула чистый текст вместо JSON.
-    """
-    cleaned = re.sub(r"<think>.*?</think>", "", raw, flags=re.S | re.I).strip()
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned, flags=re.S | re.I)
-    json_candidate = fenced.group(1) if fenced else None
-    if not json_candidate:
-        brace_match = re.search(r"\{.*\}", cleaned, flags=re.S)
-        if brace_match:
-            json_candidate = brace_match.group(0)
+_CONVERSATIONAL_PATTERNS = re.compile(
+    r"^\s*(?:привет|здравствуй\w*|добрый\s+\w+|хай|алло|кто\s+ты|что\s+ты\s+умеешь|"
+    r"чем\s+(?:ты\s+)?можешь\s+помочь|помоги\w*|спасибо|благодарю|тест|проверка|"
+    r"прывітанне|вітаю|дзякуй|хто\s+ты|"
+    r"hi|hello|hey|help|who\s+are\s+you|what\s+can\s+you\s+do|thanks|thank\s+you|test|"
+    r"salom|assalomu\s+alaykum|rahmat|yordam|"
+    r"你好|您好|谢谢|你是谁|你能做什么)[!?.،,\s]*$",
+    re.IGNORECASE,
+)
 
+
+def _build_overview_chunk(destination: str | None, university_id: str | None) -> RagChunk:
+    dest_code = (destination or "BY").upper()
+    country = registry.countries.get(dest_code)
+    uni = registry.universities.get(university_id or "") if university_id else None
+    c_name = country.name if country else dest_code
+    u_info = (
+        f"Выбранный модуль города и вуза: {uni.name} (г. {uni.city}, международный отдел: {uni.international_office_address}, тел. {uni.international_office_phone}). "
+        if uni
+        else ""
+    )
+    return RagChunk(
+        id="atlas_overview",
+        kind="card",
+        country_code=dest_code,
+        university_id=uni.id if uni else None,
+        topic="general",
+        title=f"Возможности ИИ-ассистента AIst · Платформа «Атлас» ({c_name})",
+        content=(
+            f"Я — AIst, интеллектуальный проводник платформы «Атлас» для иностранных студентов и гостей ({c_name}). "
+            f"{u_info}"
+            "Я отвечаю строго по проверенной базе НПА и вуза: подскажу точные сроки регистрации по вашему гражданству "
+            "(10, 30 или 90 суток), что делать при въезде через РФ, адреса и график работы ОГиМ, общежитий, поликлиники, "
+            "круглосуточных аптек и банков, пошаговые пути оплаты в ЕРИП, штрафы по ст. 24.35 КоАП РБ, а также переведу фото вывески."
+        ),
+        source_title="Платформа «Атлас» (Strict RAG · Закон РБ № 99-З)",
+        source_url="https://e-pasluga.by" if dest_code == "BY" else "https://emehmon.uz",
+        verified_at="2026-11-24",
+    )
+
+
+def _parse_llm_output(raw: str, valid_ids: set[str]) -> tuple[str, list[str], str]:
+    """
+    Парсер ответов любых моделей (gpt-oss-120b, Qwen3.8, Gemini, OpenRouter, Ollama):
+    возвращает (answer_text, used_ids, status), где status: 'ok' | 'no_data' | 'empty'.
+    """
+    cleaned = re.sub(r"<think>.*?</think>", "", raw or "", flags=re.S | re.I).strip()
+    if not cleaned:
+        return "", [], "empty"
+
+    if cleaned.upper().startswith("NO_DATA") or cleaned.upper() == "NO_DATA":
+        return "", [], "no_data"
+
+    # На случай если модель всё же вернула JSON
+    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned, flags=re.S | re.I)
+    json_candidate = fenced.group(1) if fenced else (
+        cleaned if cleaned.startswith("{") and cleaned.endswith("}") else None
+    )
     if json_candidate:
         try:
             parsed = json.loads(json_candidate)
             ans = str(parsed.get("answer", "")).strip()
             used = [cid for cid in parsed.get("card_ids", []) if cid in valid_ids]
             conf = bool(parsed.get("confident", True))
+            if not conf:
+                return "", [], "no_data"
             if ans:
-                return ans, used, conf
+                return ans, used, "ok"
         except Exception:
             pass
 
-    # Если бесплатная модель ответила обычным текстом без обёртки JSON — извлекаем упомянутые ID
-    mentioned = [cid for cid in valid_ids if cid in cleaned]
+    # Основной надёжный текстовый формат с финальной строкой SOURCES: id1, id2
+    used_ids: list[str] = []
+    src_match = re.search(r"(?:^|\n)\s*SOURCES?\s*:\s*([^\n]+)\s*$", cleaned, flags=re.I)
+    if src_match:
+        raw_ids = re.findall(r"[a-zA-Z0-9_]+", src_match.group(1))
+        if any(tok.upper() == "NO_DATA" for tok in raw_ids):
+            return "", [], "no_data"
+        used_ids = [cid for cid in raw_ids if cid in valid_ids]
+        cleaned = cleaned[: src_match.start()].strip()
+
+    for cid in valid_ids:
+        if cid in cleaned and cid not in used_ids:
+            used_ids.append(cid)
+
     plain = re.sub(r"\[[a-zA-Z0-9_]+\]", "", cleaned).strip()
-    if plain and len(plain) > 12:
-        low = plain.lower()
-        refusal = any(p in low for p in ("нет данных в карточках", "нет информации в базе", "confident=false", "no information in the provided"))
-        return plain, mentioned, not refusal
-    return "", [], False
+    if not plain:
+        return "", [], "empty"
+
+    low = plain.lower()
+    if "no_data" in low or "confident=false" in low:
+        return "", [], "no_data"
+
+    return plain, used_ids, "ok"
+
+
+async def _call_chat_llm(
+    client: AsyncOpenAI,
+    messages: list[dict[str, str]],
+    max_tokens: int = 2048,
+) -> str:
+    """
+    Вызывает чат-модель с учётом особенностей reasoning-моделей (openai/gpt-oss-120b, qwen3):
+    передаёт reasoning_effort='low' и достаточный бюджет токенов, чтобы внутреннее рассуждение
+    не съедало весь лимит и не возвращало пустой message.content.
+    """
+    model_low = settings.llm_model.lower()
+    extra_kwargs: dict = {}
+    if any(tag in model_low for tag in ("gpt-oss", "o1", "o3", "o4")):
+        extra_kwargs["reasoning_effort"] = "low"
+
+    async def _do_request(use_extra: bool) -> str:
+        kw = extra_kwargs if use_extra else {}
+        resp = await client.chat.completions.create(
+            model=settings.llm_model,
+            temperature=0.1,
+            max_tokens=max_tokens,
+            messages=messages,
+            **kw,
+        )
+        return resp.choices[0].message.content or ""
+
+    try:
+        return await _do_request(bool(extra_kwargs))
+    except Exception as err:
+        err_str = str(err)
+        if extra_kwargs and ("reasoning_effort" in err_str or "400" in err_str):
+            return await _do_request(False)
+        if "404" in err_str or "model_not_found" in err_str:
+            alt_model = await _discover_active_chat_model(client)
+            if alt_model:
+                persist_llm_config(settings.llm_base_url, None, alt_model, settings.llm_vision_model)
+                return await _do_request(False)
+        raise
 
 
 def _synthesize_local_rag_answer(matched: list[tuple[float, RagChunk]], lang: str = "ru") -> tuple[str, list[RagChunk]]:
@@ -631,6 +732,9 @@ async def ask_aist(
         top_k=5,
     )
 
+    if not matched and _CONVERSATIONAL_PATTERNS.match(clean_q):
+        matched = [(5.0, _build_overview_chunk(destination, university_id))]
+
     if not matched:
         return AiAnswer(
             answer=(
@@ -651,8 +755,7 @@ async def ask_aist(
     chunks_by_id = {ch.id: ch for _, ch in matched}
     client = _llm_client()
 
-    # Надёжный локальный синтез, если API-ключ ещё не указан
-    if client is None:
+    def _local_fallback_answer() -> AiAnswer:
         synth_text, used_chunks = _synthesize_local_rag_answer(matched, lang=lang)
         seen_urls: set[tuple[str, str]] = set()
         sources: list[VerifiedSource] = []
@@ -681,6 +784,10 @@ async def ask_aist(
             mode="verified_kb",
         )
 
+    # Надёжный локальный синтез, если API-ключ ещё не указан
+    if client is None:
+        return _local_fallback_answer()
+
     context_blocks = [
         f"[{ch.id}] ({ch.kind}) {ch.title}\n{ch.content}"
         for _, ch in matched
@@ -688,13 +795,13 @@ async def ask_aist(
     target_lang_desc = _LANG_NAMES.get(lang, lang)
     system_prompt = (
         "Ты — AIst, интеллектуальный ассистент платформы «Атлас» для иностранных студентов и гостей Беларуси.\n"
-        "ПРАВИЛА STRICT RAG:\n"
-        "1. Отвечай ЧЁТКО, структурированно (2–6 предложений или короткий список) ИСКЛЮЧИТЕЛЬНО на основе переданных фрагментов базы.\n"
-        "2. Обязательно указывай точные сроки, статьи законов, адреса, кабинеты, телефоны и шаги ЕРИП из фрагментов.\n"
-        "3. СТРОГО ЗАПРЕЩЕНО выдумывать факты, цены, законы или адреса, которых нет во фрагментах. Если ответа во фрагментах нет — верни confident=false.\n"
-        f"4. Язык ответа: {target_lang_desc} (переведи смысл точно на этот язык, сохраняя названия улиц и порталов понятно).\n"
-        "5. Верни ТОЛЬКО валидный JSON без markdown-обёртки:\n"
-        '{"answer": "текст ответа", "card_ids": ["id1", "id2"], "confident": true}'
+        "ПРАВИЛА ОТВЕТА (STRICT RAG):\n"
+        "1. Дай чёткий, полезный и хорошо структурированный ответ (обычным читаемым текстом, БЕЗ JSON) строго на основе переданных фрагментов базы.\n"
+        "2. Обязательно включай точные сроки, статьи законов, адреса, кабинеты, телефоны, часы работы и шаги ЕРИП из фрагментов.\n"
+        "3. Не выдумывай факты, цены или адреса, которых нет во фрагментах. Только если во фрагментах совсем нет информации по сути вопроса — напиши ровно одно слово: NO_DATA\n"
+        f"4. Язык ответа: {target_lang_desc}.\n"
+        "5. В самом конце ответа на отдельной новой строке укажи ID использованных фрагментов в формате:\n"
+        "SOURCES: id1, id2"
     )
 
     messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
@@ -711,57 +818,18 @@ async def ask_aist(
     )
 
     try:
-        try:
-            resp = await client.chat.completions.create(
-                model=settings.llm_model,
-                temperature=0.1,
-                max_tokens=1400,
-                messages=messages,
-            )
-        except Exception as first_err:
-            if "404" in str(first_err) or "model_not_found" in str(first_err):
-                alt_model = await _discover_active_chat_model(client)
-                if alt_model:
-                    persist_llm_config(settings.llm_base_url, None, alt_model, settings.llm_vision_model)
-                    resp = await client.chat.completions.create(
-                        model=settings.llm_model,
-                        temperature=0.1,
-                        max_tokens=1400,
-                        messages=messages,
-                    )
-                else:
-                    raise
-            else:
-                raise
-        raw_content = resp.choices[0].message.content or ""
-        answer_text, used_ids, confident = _parse_llm_output(raw_content, set(chunks_by_id.keys()))
-        if confident and answer_text and not used_ids:
-            # Если бесплатная модель дала корректный ответ по первому фрагменту, но не перечислила ID
-            used_ids = [matched[0][1].id]
+        raw_content = await _call_chat_llm(client, messages, max_tokens=2048)
+        answer_text, used_ids, status = _parse_llm_output(raw_content, set(chunks_by_id.keys()))
     except Exception as exc:
         logger.warning("Ошибка вызова LLM (%s), переключение на локальный синтез RAG", exc)
-        synth_text, used_chunks = _synthesize_local_rag_answer(matched, lang=lang)
-        return AiAnswer(
-            answer=synth_text,
-            sources=[
-                VerifiedSource(
-                    card_id=used_chunks[0].id,
-                    title=used_chunks[0].title,
-                    source_title=used_chunks[0].source_title,
-                    source_url=used_chunks[0].source_url,
-                    verified_at=used_chunks[0].verified_at,
-                )
-            ],
-            confident=True,
-            escalate_to_university=False,
-            pii_redacted_count=pii_hits,
-            scrubbed_query=clean_q,
-            retrieved_chunks=len(matched),
-            topic=used_chunks[0].topic,
-            mode="verified_kb",
-        )
+        return _local_fallback_answer()
 
-    if not confident or not answer_text:
+    # Если модель потратила все токены на внутренний reasoning и вернула пустую строку — отдаём точный синтез по найденным чанкам
+    if status == "empty":
+        logger.warning("LLM вернул пустой content — используем локальный синтез по найденным RAG-фрагментам")
+        return _local_fallback_answer()
+
+    if status == "no_data" or not answer_text:
         return AiAnswer(
             answer=(
                 "По этой детали нет подтверждённых данных в верифицированной базе, поэтому я не стану угадывать. "
@@ -776,6 +844,9 @@ async def ask_aist(
             topic="unanswered",
             mode="sovereign_llm" if settings.is_sovereign_llm else "cloud_llm_scrubbed",
         )
+
+    if not used_ids:
+        used_ids = [matched[0][1].id]
 
     seen_src: set[tuple[str, str]] = set()
     verified_sources: list[VerifiedSource] = []
