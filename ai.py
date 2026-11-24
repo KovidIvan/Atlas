@@ -15,18 +15,23 @@ logger = logging.getLogger("atlas.ai")
 
 
 # --- Privacy Firewall (локальное обезличивание ПД до отправки в любой ИИ) ---
+# ВАЖНО: порядок от более точных форматов (карта, 14-значный ID, паспорт) к общим (телефон)
 _PII_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # Email
     (re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"), "[СКРЫТО_EMAIL]"),
-    # Телефоны (РБ, РУз, РФ, международные)
+    # Номера банковских карт (16 цифр с пробелами/дефисами или слитно)
+    (re.compile(r"(?<!\d)(?:\d{4}[\s\-]?){3}\d{4}(?!\d)"), "[СКРЫТО_КАРТА]"),
+    # Личный номер РБ (14 символов: 7 цифр + буква + 3 цифры + 2 буквы + цифра)
+    (re.compile(r"\b\d{7}[A-ZА-Я]\d{3}[A-ZА-Я]{2}\d\b", re.IGNORECASE), "[СКРЫТО_ИДЕНТИФИКАТОР]"),
+    # ПИНФЛ / 14-значный национальный идентификатор
+    (re.compile(r"(?<!\d)\d{14}(?!\d)"), "[СКРЫТО_ИДЕНТИФИКАТОР]"),
+    # Номера паспортов (РБ/РУз: 2 буквы + 7 цифр; КНР: E/G + 8 цифр; РФ: 4 цифры + 6 цифр)
+    (
+        re.compile(r"\b(?:[A-ZА-Я]{2}\s?\d{7}|[EG]\d{8}|\d{2}\s?\d{2}\s?\d{6})\b", re.IGNORECASE),
+        "[СКРЫТО_ПАСПОРТ]",
+    ),
+    # Телефоны (РБ, СНГ, международные: 10–15 цифр)
     (re.compile(r"(?<!\d)(?:\+?\d[\s\-()]*){9,14}\d(?!\d)"), "[СКРЫТО_ТЕЛЕФОН]"),
-    # Номера паспортов (РБ: MP/AB/BM/HB/KH/MC/KB/PP + 7 цифр; РУз: AA/AB/AD/FA + 7 цифр)
-    (re.compile(r"\b[A-ZА-Я]{2}\s?\d{7}\b"), "[СКРЫТО_ПАСПОРТ]"),
-    # Личный номер РБ (14 символов: 7 цифр + буква + 3 цифры + 2 буквы + цифра) / ПИНФЛ РУз (14 цифр)
-    (re.compile(r"\b\d{7}[A-Z]\d{3}[A-Z]{2}\d\b"), "[СКРЫТО_ИДЕНТИФИКАТОР]"),
-    (re.compile(r"\b\d{14}\b"), "[СКРЫТО_ПИНФЛ]"),
-    # Номера банковских карт (16 цифр с пробелами/дефисами)
-    (re.compile(r"\b(?:\d{4}[\s\-]?){3}\d{4}\b"), "[СКРЫТО_КАРТА]"),
 ]
 
 
@@ -54,16 +59,68 @@ class AiAnswer(BaseModel):
     confident: bool = True
     escalate_to_university: bool = False
     pii_redacted_count: int = 0
+    scrubbed_query: str = ""
     topic: str = "general"
     mode: str = "verified_kb"  # sovereign_llm | cloud_llm_scrubbed | verified_kb
     disclaimer: str = "Справочный ответ на основе проверенной базы «Атлас»."
 
 
+_MULTILINGUAL_BRIDGES: list[tuple[tuple[str, ...], str]] = [
+    (
+        ("fine", "fines", "penalty", "overstay", "jarima", "штраф", "просроч", "24.35", "коап", "депортац", "罚款", "逾期"),
+        "штраф просрочка наказание депортация 24.35 коап базовая",
+    ),
+    (
+        ("registration", "register", "ogim", "police", "ro'yxat", "royxat", "рэгістрац", "注册", "登记"),
+        "регистрация огим епэу срок",
+    ),
+    (
+        ("russia", "russian", "moscow", "smolensk", "rossiya", "расі", "через рф", "через россию", "俄罗斯", "转机"),
+        "рф россия граница",
+    ),
+    (
+        ("dorm", "dormitory", "hostel", "checkin", "yotoqxona", "інтэрнат", "заселен", "пропуск", "宿舍", "入住"),
+        "общежитие заселение международный отдел",
+    ),
+    (
+        ("sim", "phone", "bank", "card", "money", "pay", "payment", "erip", "aloqa", "to'lov", "tolov", "картк", "аплат", "ерип", "пошлин", "银行", "电话卡", "支付"),
+        "сим связь банк карта оплата ерип деньги",
+    ),
+    (
+        ("doctor", "hospital", "clinic", "medical", "insurance", "pharmacy", "shifokor", "dorixona", "sug'urta", "лекарств", "страховк", "медосмотр", "урач", "аптэк", "医院", "保险", "药店"),
+        "медицина страховка врач поликлиника аптека медосмотр 103",
+    ),
+    (
+        ("halal", "food", "eat", "cafe", "shop", "halol", "ovqat", "еда", "кафе", "халяль", "харчаван", "清真", "餐厅"),
+        "халяль еда кафе магазин продукты",
+    ),
+    (
+        ("visa", "visafree", "tourist", "tourism", "безвиз", "туризм", "турист", "bepul viza", "бязвіз", "免签", "旅游"),
+        "безвиз виза туризм въезд",
+    ),
+    (
+        ("lost", "stolen", "embassy", "consulate", "потерял", "украли", "утеря", "паспорт", "посольств", "yo'qot", "элчихона", "丢失", "护照", "大使馆"),
+        "утеря паспорт милиция 102 посольство справка",
+    ),
+]
+
+
+def _expand_query(query: str) -> str:
+    low = query.lower()
+    extras: list[str] = []
+    for triggers, bridge in _MULTILINGUAL_BRIDGES:
+        if any(t in low for t in triggers):
+            extras.append(bridge)
+    return f"{query} {' '.join(extras)}" if extras else query
+
+
 def _tokenize(text: str) -> set[str]:
-    words = re.findall(r"[a-zA-Zа-яА-ЯёЁўЎқҚғҒҳҲіІ0-9']{3,}", text.lower())
-    # Простая нормализация окончаний (первые 5 символов для славянских/тюркских корней)
+    words = re.findall(r"[a-zA-Zа-яА-ЯёЁўЎқҚғҒҳҲіІ0-9']{2,}", text.lower())
     stems = {w[:5] if len(w) > 5 else w for w in words}
-    return set(words) | stems
+    # Поддержка иероглифов (биграммы для китайского языка)
+    cjk_chars = re.findall(r"[\u4e00-\u9fff]", text)
+    cjk_tokens = {cjk_chars[i] + cjk_chars[i + 1] for i in range(len(cjk_chars) - 1)}
+    return set(words) | stems | cjk_tokens
 
 
 def retrieve_cards(
@@ -77,7 +134,8 @@ def retrieve_cards(
     if not cards:
         cards = registry.get_cards()
 
-    q_tokens = _tokenize(query)
+    expanded = _expand_query(query)
+    q_tokens = _tokenize(expanded)
     if not q_tokens:
         return cards[:top_k]
 
@@ -107,7 +165,7 @@ async def ask_aist(
     lang: str = "ru",
 ) -> AiAnswer:
     """
-    Strict RAG ассистент AIst / Лайлак:
+    Strict RAG ассистент AIst:
     1. Обезличивает вопрос (Privacy Firewall).
     2. Ищет релевантные проверенные карточки в локальных модулях.
     3. Если подключён LLM — генерирует ответ строго по карточкам,
@@ -128,6 +186,7 @@ async def ask_aist(
             confident=False,
             escalate_to_university=True,
             pii_redacted_count=pii_hits,
+            scrubbed_query=clean_q,
             topic="unanswered",
             mode="verified_kb",
         )
@@ -155,6 +214,7 @@ async def ask_aist(
             confident=True,
             escalate_to_university=False,
             pii_redacted_count=pii_hits,
+            scrubbed_query=clean_q,
             topic=top.topic,
             mode="verified_kb",
         )
@@ -164,8 +224,8 @@ async def ask_aist(
         for c in matched
     ]
     system_prompt = (
-        "Ты — AIst (Лайлак), официальный ИИ-проводник «Атлас» для иностранных студентов и гостей "
-        "Беларуси и Узбекистана. Отвечай КРАТКО, дружелюбно и СТРОГО на основе переданных карточек.\n"
+        "Ты — AIst, интеллектуальный проводник платформы «Атлас» для иностранных студентов и гостей. "
+        "Отвечай КРАТКО, по делу и СТРОГО на основе переданных карточек.\n"
         "ЗАПРЕЩЕНО выдумывать законы, сроки, адреса или ссылки, которых нет в карточках.\n"
         "Если в карточках нет ответа на вопрос, установи confident=false.\n"
         f"Язык ответа: {lang}.\n"
@@ -210,6 +270,7 @@ async def ask_aist(
             confident=True,
             escalate_to_university=False,
             pii_redacted_count=pii_hits,
+            scrubbed_query=clean_q,
             topic=top.topic,
             mode="verified_kb",
         )
@@ -237,6 +298,7 @@ async def ask_aist(
             confident=False,
             escalate_to_university=True,
             pii_redacted_count=pii_hits,
+            scrubbed_query=clean_q,
             topic="unanswered",
             mode="sovereign_llm" if settings.is_sovereign_llm else "cloud_llm_scrubbed",
         )
@@ -247,6 +309,7 @@ async def ask_aist(
         confident=True,
         escalate_to_university=False,
         pii_redacted_count=pii_hits,
+        scrubbed_query=clean_q,
         topic=topic,
         mode="sovereign_llm" if settings.is_sovereign_llm else "cloud_llm_scrubbed",
     )

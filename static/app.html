@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>Атлас — путеводитель для гостей Беларуси и Узбекистана</title>
+  <meta name="theme-color" content="#0E4D40" />
+  <title>Атлас — цифровая платформа адаптации и навигации</title>
+  <link rel="manifest" href="/manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500&display=swap" rel="stylesheet" />
@@ -15,6 +17,7 @@
       /* Warm paper neutral ramp */
       --bg: #F7F4EE;
       --surface: #FDFBF7;
+      --surface-done: #F3EEE4;
       --raised: #EFE9DF;
       --border: rgba(31, 27, 22, 0.08);
       --border-strong: rgba(31, 27, 22, 0.16);
@@ -51,7 +54,7 @@
       font-weight: 400;
       background: var(--bg);
       color: var(--text-1);
-      padding-bottom: 80px;
+      padding-bottom: 84px;
       -webkit-font-smoothing: antialiased;
     }
 
@@ -88,11 +91,11 @@
       flex: 0 0 18px;
     }
 
-    /* Quiet top bar */
+    /* Quiet top bar (z-index above isolated map stacking context) */
     header {
       position: sticky;
       top: 0;
-      z-index: 500;
+      z-index: 1100;
       height: 56px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
@@ -139,10 +142,36 @@
       text-overflow: ellipsis;
     }
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .lang-select {
+      height: 32px;
+      width: auto;
+      padding: 0 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text-1);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color 140ms var(--ease), background-color 140ms var(--ease);
+    }
+
+    .lang-select:hover {
+      background: var(--raised);
+    }
+
     .privacy-btn {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       height: 32px;
       padding: 0 8px;
       border-radius: 8px;
@@ -162,6 +191,27 @@
       color: var(--text-1);
     }
 
+    @media (max-width: 420px) {
+      .privacy-btn span { display: none; }
+    }
+
+    .offline-tag {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      height: 32px;
+      padding: 0 8px;
+      border-radius: 8px;
+      background: var(--raised);
+      border: 1px solid var(--border-strong);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-2);
+      white-space: nowrap;
+    }
+
+    .offline-tag.visible { display: inline-flex; }
+
     /* Main container */
     main {
       max-width: 760px;
@@ -177,7 +227,7 @@
     .tab { display: none; }
     .tab.active {
       display: block;
-      animation: tabEnter 220ms var(--ease) both;
+      animation: tabEnter 200ms var(--ease) both;
     }
 
     @keyframes tabEnter {
@@ -265,6 +315,13 @@
       color: var(--text-2);
     }
 
+    .moment-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
     .moment-method {
       margin-top: 16px;
       padding-top: 12px;
@@ -336,6 +393,8 @@
       line-height: 20px;
       color: var(--text-2);
       min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .params-panel {
@@ -366,7 +425,7 @@
       margin-bottom: 4px;
     }
 
-    select, input[type="date"], input[type="text"] {
+    .field select, input[type="date"], input[type="text"] {
       width: 100%;
       height: 40px;
       padding: 0 12px;
@@ -377,7 +436,7 @@
       transition: border-color 140ms var(--ease), background-color 140ms var(--ease);
     }
 
-    select:hover, input:hover {
+    .field select:hover, input:hover {
       border-color: rgba(31, 27, 22, 0.28);
     }
 
@@ -433,6 +492,13 @@
     }
 
     .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+
+    .btn-icon {
+      width: 44px;
+      padding: 0;
+      flex: 0 0 44px;
+    }
 
     .btn-sm {
       height: 32px;
@@ -453,9 +519,7 @@
       color: var(--text-1);
     }
 
-    .btn-secondary:hover {
-      background: #E6DED1;
-    }
+    .btn-secondary:hover { background: #E6DED1; }
 
     .btn-danger {
       background: transparent;
@@ -470,7 +534,7 @@
 
     .btn-full { width: 100%; }
 
-    /* Signature cartographic route timeline */
+    /* Signature cartographic route timeline (opaque surfaces — no rail bleed-through) */
     .timeline {
       position: relative;
       display: flex;
@@ -483,20 +547,22 @@
       content: "";
       position: absolute;
       left: 7px;
-      top: 16px;
-      bottom: 16px;
+      top: 20px;
+      bottom: 20px;
       width: 1px;
       background: var(--border-strong);
+      z-index: 0;
     }
 
     .step {
       position: relative;
+      z-index: 1;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 16px;
       box-shadow: var(--shadow-sm);
-      transition: border-color 140ms var(--ease), opacity 160ms var(--ease);
+      transition: background-color 160ms var(--ease), border-color 140ms var(--ease);
     }
 
     .step.urgent {
@@ -504,20 +570,25 @@
     }
 
     .step.done {
-      opacity: 0.68;
+      background: var(--surface-done);
+      border-color: var(--border);
+      box-shadow: none;
     }
 
-    /* Signature diamond waypoint on the route rail */
+    /* Signature diamond waypoint with solid --bg halo so rail stops cleanly around it */
     .step-node {
       position: absolute;
       left: -26px;
       top: 20px;
       width: 10px;
       height: 10px;
+      z-index: 2;
       transform: rotate(45deg);
       border-radius: 1px;
       background: var(--surface);
       border: 1.5px solid var(--accent);
+      box-shadow: 0 0 0 4px var(--bg);
+      transition: background-color 140ms var(--ease), border-color 140ms var(--ease);
     }
 
     .step.urgent .step-node {
@@ -551,6 +622,13 @@
       line-height: 20px;
       font-weight: 500;
       color: var(--text-1);
+      transition: color 140ms var(--ease);
+    }
+
+    .step.done .step-title {
+      color: var(--text-2);
+      text-decoration: line-through;
+      text-decoration-color: rgba(94, 85, 74, 0.45);
     }
 
     .step-due {
@@ -570,11 +648,20 @@
       color: var(--urgent);
     }
 
+    .step.done .step-due {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
     .step-desc {
       margin: 8px 0 0 0;
       font-size: 13px;
       line-height: 20px;
       color: var(--text-2);
+    }
+
+    .step.done .step-desc {
+      color: var(--text-3);
     }
 
     .step-meta-list {
@@ -594,7 +681,6 @@
     }
 
     .meta-row .icon {
-      margin-top: 0;
       color: var(--text-3);
     }
 
@@ -658,10 +744,13 @@
     }
 
     #map {
+      position: relative;
+      z-index: 1;
+      isolation: isolate;
       height: 320px;
       border-radius: 12px;
       border: 1px solid var(--border-strong);
-      margin-bottom: 16px;
+      margin-bottom: 4px;
       background: var(--raised);
     }
 
@@ -673,6 +762,15 @@
       border: 2px solid #FDFBF7;
       border-radius: 2px;
       box-shadow: 0 2px 6px rgba(31, 27, 22, 0.25);
+    }
+
+    .user-pin {
+      width: 14px;
+      height: 14px;
+      border-radius: 7px;
+      background: var(--accent);
+      border: 2.5px solid #FFFFFF;
+      box-shadow: 0 0 0 4px rgba(14, 77, 64, 0.22);
     }
 
     .place-list {
@@ -705,6 +803,13 @@
       color: var(--text-1);
     }
 
+    .place-badges {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
     .place-cat {
       font-family: var(--font-mono);
       font-size: 12px;
@@ -714,7 +819,18 @@
       background: var(--raised);
       color: var(--text-2);
       white-space: nowrap;
-      flex: 0 0 auto;
+    }
+
+    .place-dist {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 16px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 500;
+      white-space: nowrap;
     }
 
     .place-meta {
@@ -749,9 +865,7 @@
       transition: background-color 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease);
     }
 
-    .place-action-btn:hover {
-      background: var(--raised);
-    }
+    .place-action-btn:hover { background: var(--raised); }
 
     .place-action-btn.primary {
       color: var(--accent);
@@ -768,9 +882,7 @@
       margin-bottom: 16px;
     }
 
-    .search-wrap input {
-      padding-left: 36px;
-    }
+    .search-wrap input { padding-left: 36px; }
 
     .search-icon {
       position: absolute;
@@ -806,7 +918,7 @@
     }
 
     .chat-box {
-      max-height: 380px;
+      max-height: 400px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -846,8 +958,22 @@
       font-size: 12px;
       line-height: 16px;
       display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .pii-note-head {
+      display: flex;
       align-items: center;
       gap: 8px;
+      font-weight: 500;
+    }
+
+    .pii-scrubbed {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-2);
+      word-break: break-word;
     }
 
     .sources-box {
@@ -872,7 +998,29 @@
       gap: 8px;
     }
 
-    .chat-form input { flex: 1; height: 44px; }
+    .chat-form input[type="text"] { flex: 1; height: 44px; }
+
+    /* Ticket replies list */
+    .ticket-row {
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ticket-row:first-child { border-top: none; padding-top: 0; }
+    .ticket-row:last-child { padding-bottom: 0; }
+
+    .ticket-reply {
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(14, 77, 64, 0.16);
+      font-size: 13px;
+      line-height: 18px;
+      color: var(--text-1);
+    }
 
     /* SOS & Phrasebook */
     .sos-row {
@@ -932,7 +1080,7 @@
       color: var(--text-3);
     }
 
-    /* Segmented sub-navigation inside Services tab (keeps bottom nav strictly 4 items) */
+    /* Segmented sub-navigation inside Services tab */
     .seg-bar {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -1046,7 +1194,7 @@
     .show-overlay {
       position: fixed;
       inset: 0;
-      z-index: 900;
+      z-index: 1400;
       background: var(--surface);
       display: none;
       flex-direction: column;
@@ -1073,6 +1221,12 @@
       font-size: 14px;
       font-weight: 500;
       color: var(--accent);
+    }
+
+    .show-overlay-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .show-overlay-main {
@@ -1103,34 +1257,24 @@
       color: var(--text-3);
     }
 
-    .header-actions {
+    .quiet-foot {
       display: flex;
       align-items: center;
-      gap: 8px;
-    }
-
-    .offline-tag {
-      display: none;
-      align-items: center;
-      gap: 6px;
-      height: 32px;
-      padding: 0 8px;
-      border-radius: 8px;
-      background: var(--raised);
-      border: 1px solid var(--border-strong);
-      font-family: var(--font-mono);
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 4px 12px;
       font-size: 12px;
-      color: var(--text-2);
-      white-space: nowrap;
+      color: var(--text-3);
     }
 
-    .offline-tag.visible { display: inline-flex; }
+    .quiet-foot a {
+      color: var(--text-3);
+      text-decoration: none;
+    }
 
-    .moment-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
+    .quiet-foot a:hover {
+      color: var(--accent);
+      text-decoration: underline;
     }
 
     /* Bottom navigation */
@@ -1144,7 +1288,7 @@
       border-top: 1px solid var(--border);
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      z-index: 600;
+      z-index: 1100;
     }
 
     nav button {
@@ -1176,15 +1320,22 @@
     <div class="brand">
       <div class="brand-mark" aria-hidden="true"></div>
       <div>
-        <h1 class="brand-title">Атлас</h1>
-        <div class="brand-route" id="header-route">Беларусь · Узбекистан</div>
+        <h1 class="brand-title" data-i18n="appTitle">Атлас</h1>
+        <div class="brand-route" id="header-route">Беларусь · адаптация и навигация</div>
       </div>
     </div>
     <div class="header-actions">
-      <div class="offline-tag" id="offline-badge" title="Показаны сохранённые данные без интернета">Офлайн</div>
-      <button class="privacy-btn" onclick="openPrivacySection()" title="Конфиденциальность и удаление данных">
+      <div class="offline-tag" id="offline-badge" data-i18n="offlineBadge">Офлайн</div>
+      <select class="lang-select mono" id="lang-select" onchange="setUiLang(this.value)" aria-label="Язык интерфейса">
+        <option value="ru">RU · Русский</option>
+        <option value="by">BY · Беларуская</option>
+        <option value="en">EN · English</option>
+        <option value="uz">UZ · O‘zbek</option>
+        <option value="zh">ZH · 中文</option>
+      </select>
+      <button class="privacy-btn" onclick="openPrivacySection()" title="Закон РБ № 99-З">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-        <span>Без сбора ПД</span>
+        <span data-i18n="zeroPiiBtn">Без сбора ПД</span>
       </button>
     </div>
   </header>
@@ -1192,22 +1343,21 @@
   <main>
     <!-- TAB 1: PLAN -->
     <section id="tab-plan" class="tab active">
-      <!-- Moment 1: Registration deadline card -->
       <div class="moment-card" id="deadline-moment">
         <div class="moment-top">
           <div>
-            <div class="moment-label">Временная регистрация</div>
+            <div class="moment-label" data-i18n="regHeading">Временная регистрация</div>
             <div class="moment-figure" id="moment-days">—</div>
             <div class="moment-date" id="moment-date">Рассчитываем срок</div>
           </div>
           <div class="moment-actions">
-            <button class="btn btn-secondary btn-sm" onclick="downloadOfflineKit()" title="Скачать автономную памятку на первые 48 часов">
+            <button class="btn btn-secondary btn-sm" onclick="downloadOfflineKit()">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              <span>Офлайн</span>
+              <span data-i18n="offlineBtn">Офлайн</span>
             </button>
             <button class="btn btn-secondary btn-sm" id="toggle-params-btn" onclick="toggleParams()">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-              <span>Параметры</span>
+              <span data-i18n="paramsBtn">Параметры</span>
             </button>
           </div>
         </div>
@@ -1222,7 +1372,7 @@
 
         <div class="progress-row">
           <div class="progress-meta">
-            <span>Прогресс по маршруту</span>
+            <span data-i18n="routeProgress">Прогресс по маршруту</span>
             <span class="mono" id="progress-label">0 / 0</span>
           </div>
           <div class="progress-track">
@@ -1231,74 +1381,80 @@
         </div>
       </div>
 
-      <!-- Compact route summary strip -->
       <div class="params-bar">
         <div class="params-summary mono" id="params-summary">UZ → BY · ВГУ · Общежитие</div>
-        <button class="btn btn-secondary btn-sm" onclick="toggleParams()">Изменить</button>
+        <button class="btn btn-secondary btn-sm" onclick="toggleParams()" data-i18n="changeBtn">Изменить</button>
       </div>
 
-      <!-- Collapsible route settings -->
       <div class="card params-panel" id="params-panel">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Параметры поездки</h2>
-            <p class="card-sub">План рассчитывается по проверенным правилам для выбранной страны и вуза</p>
+            <h2 class="card-title" data-i18n="tripParamsTitle">Параметры поездки</h2>
+            <p class="card-sub" data-i18n="tripParamsSub">Сроки и маршрут рассчитываются детерминированным алгоритмом по нормативной базе</p>
           </div>
         </div>
         <div class="grid2">
           <div class="field">
-            <label for="citizenship">Гражданство</label>
+            <label for="citizenship" data-i18n="lblCitizenship">Гражданство</label>
             <select id="citizenship">
               <option value="UZ">Узбекистан (UZ)</option>
+              <option value="CN">Китай (CN)</option>
+              <option value="RU">Россия (RU)</option>
+              <option value="KZ">Казахстан (KZ)</option>
+              <option value="TM">Туркменистан (TM)</option>
+              <option value="IN">Индия (IN)</option>
+              <option value="TJ">Таджикистан (TJ)</option>
+              <option value="AM">Армения (AM)</option>
+              <option value="KG">Кыргызстан (KG)</option>
               <option value="BY">Беларусь (BY)</option>
+              <option value="*">Другая страна (*)</option>
             </select>
           </div>
           <div class="field">
-            <label for="destination">Страна визита</label>
-            <select id="destination"></select>
+            <label for="destination" data-i18n="lblDestination">Страна визита</label>
+            <select id="destination" onchange="syncUniversitiesForCountry()"></select>
           </div>
           <div class="field">
-            <label for="university">Университет</label>
+            <label for="university" data-i18n="lblUniversity">Университет и город</label>
             <select id="university"></select>
           </div>
           <div class="field">
-            <label for="housing">Жильё</label>
+            <label for="housing" data-i18n="lblHousing">Жильё</label>
             <select id="housing">
-              <option value="dorm">Общежитие вуза</option>
-              <option value="private">Квартира или у знакомых</option>
-              <option value="hotel">Гостиница или хостел</option>
+              <option value="dorm" data-i18n="optDorm">Общежитие вуза</option>
+              <option value="private" data-i18n="optPrivate">Квартира или у знакомых</option>
+              <option value="hotel" data-i18n="optHotel">Гостиница или хостел</option>
             </select>
           </div>
           <div class="field">
-            <label for="purpose">Цель поездки</label>
+            <label for="purpose" data-i18n="lblPurpose">Цель поездки</label>
             <select id="purpose">
-              <option value="study">Учёба или обмен</option>
-              <option value="tourism">Туризм или деловая поездка</option>
+              <option value="study" data-i18n="optStudy">Учёба или обмен</option>
+              <option value="tourism" data-i18n="optTourism">Туризм или деловая поездка</option>
             </select>
           </div>
           <div class="field">
-            <label for="arrival">Дата въезда</label>
+            <label for="arrival" data-i18n="lblArrival">Дата въезда</label>
             <input type="date" id="arrival" />
           </div>
         </div>
 
-        <label class="check-block" for="viaRf">
+        <label class="check-block" for="viaRf" id="via-rf-wrap">
           <input type="checkbox" id="viaRf" />
           <div>
-            <div class="check-title">Въезд в Беларусь через Россию</div>
-            <div class="check-hint">При въезде через РФ онлайн-регистрация на e-pasluga.by недоступна — маршрут перестроится на личный визит в ОГиМ</div>
+            <div class="check-title" data-i18n="viaRfTitle">Въезд в Беларусь через Россию</div>
+            <div class="check-hint" data-i18n="viaRfHint">При въезде через РФ онлайн-регистрация на e-pasluga.by недоступна — маршрут перестроится на личный визит в ОГиМ</div>
           </div>
         </label>
 
-        <button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="applyParams()">Обновить план</button>
+        <button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="applyParams()" data-i18n="savePlanBtn">Обновить план</button>
       </div>
 
-      <!-- Cartographic route timeline -->
       <div class="timeline" id="plan-steps"></div>
       <div class="disclaimer" id="plan-disclaimer"></div>
     </section>
 
-    <!-- TAB 2: MAP (Moment 2) -->
+    <!-- TAB 2: MAP -->
     <section id="tab-map" class="tab">
       <div class="card">
         <div class="card-header">
@@ -1306,21 +1462,24 @@
             <h2 class="card-title" id="map-title">Карта первых 48 часов</h2>
             <p class="card-sub" id="map-sub">Проверенные точки рядом с университетом</p>
           </div>
-          <span class="mono" style="font-size:12px; color:var(--text-3);" id="map-count">0</span>
+          <button class="btn btn-secondary btn-sm" id="near-me-btn" onclick="toggleNearMe()">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/></svg>
+            <span data-i18n="nearMeBtn">Рядом со мной</span>
+          </button>
         </div>
 
         <div class="filters" id="map-chips">
-          <button class="filter-btn active" data-cat="">Все</button>
-          <button class="filter-btn" data-cat="ogim"><span class="cat-dot" style="background:var(--urgent);"></span>ОГиМ</button>
-          <button class="filter-btn" data-cat="university"><span class="cat-dot" style="background:var(--accent);"></span>Вуз</button>
-          <button class="filter-btn" data-cat="dorm"><span class="cat-dot" style="background:var(--accent);"></span>Общежития</button>
-          <button class="filter-btn" data-cat="services">Документы и транспорт</button>
-          <button class="filter-btn" data-cat="pharmacy">Медицина и аптеки</button>
-          <button class="filter-btn" data-cat="bank">Банки</button>
-          <button class="filter-btn" data-cat="telecom">Связь</button>
-          <button class="filter-btn" data-cat="halal"><span class="cat-dot" style="background:var(--ochre);"></span>Питание и магазины</button>
-          <button class="filter-btn" data-flag="halal">Халяль</button>
-          <button class="filter-btn" data-flag="accessible">Доступная среда</button>
+          <button class="filter-btn active" data-cat="" data-i18n="catAll">Все</button>
+          <button class="filter-btn" data-cat="ogim"><span class="cat-dot" style="background:var(--urgent);"></span><span data-i18n="catOgim">ОГиМ</span></button>
+          <button class="filter-btn" data-cat="university"><span class="cat-dot" style="background:var(--accent);"></span><span data-i18n="catUni">Вуз</span></button>
+          <button class="filter-btn" data-cat="dorm"><span class="cat-dot" style="background:var(--accent);"></span><span data-i18n="catDorm">Общежития</span></button>
+          <button class="filter-btn" data-cat="services" data-i18n="catServices">Документы и транспорт</button>
+          <button class="filter-btn" data-cat="pharmacy" data-i18n="catMed">Медицина и аптеки</button>
+          <button class="filter-btn" data-cat="bank" data-i18n="catBank">Банки</button>
+          <button class="filter-btn" data-cat="telecom" data-i18n="catTelecom">Связь</button>
+          <button class="filter-btn" data-cat="halal"><span class="cat-dot" style="background:var(--ochre);"></span><span data-i18n="catFood">Питание</span></button>
+          <button class="filter-btn" data-flag="halal" data-i18n="flagHalal">Халяль</button>
+          <button class="filter-btn" data-flag="accessible" data-i18n="flagAccess">Доступная среда</button>
         </div>
 
         <div id="map"></div>
@@ -1329,15 +1488,15 @@
       <div class="card">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Справочник адресов</h2>
-            <p class="card-sub">Полный список проверенных организаций, включая адреса без метки на карте</p>
+            <h2 class="card-title" data-i18n="dirTitle">Справочник адресов</h2>
+            <p class="card-sub" data-i18n="dirSub">Расстояние рассчитывается локально на телефоне без передачи геопозиции на сервер</p>
           </div>
           <span class="mono" style="font-size:12px; color:var(--text-3);" id="dir-count">0</span>
         </div>
 
         <div class="search-wrap">
           <svg class="icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input type="text" id="map-search" placeholder="Поиск по названию, улице или услуге" oninput="renderMapAndDirectory()" />
+          <input type="text" id="map-search" data-i18n-placeholder="searchPlaceholder" placeholder="Поиск по названию, улице или услуге" oninput="renderMapAndDirectory()" />
         </div>
 
         <div class="place-list" id="map-list"></div>
@@ -1349,48 +1508,59 @@
       <div class="card">
         <div class="card-header">
           <div>
-            <h2 class="card-title">AIst / Лайлак</h2>
-            <p class="card-sub">Отвечает только по проверенной базе вуза и НПА. Паспорта и телефоны скрываются до отправки.</p>
+            <h2 class="card-title">AIst</h2>
+            <p class="card-sub" data-i18n="aiSub">Отвечает строго по верифицированной базе НПА и вуза, скрывая паспорта и телефоны до отправки</p>
           </div>
+          <span class="place-cat">Strict RAG · 99-З</span>
         </div>
 
-        <div class="quick-prompts">
-          <button class="filter-btn" onclick="quickAsk('Как оформить регистрацию при въезде через Россию?')">Въезд через РФ</button>
-          <button class="filter-btn" onclick="quickAsk('Какие первые шаги студента в ВГУ?')">Первые шаги в ВГУ</button>
-          <button class="filter-btn" onclick="quickAsk('Где оформить SIM-карту и банковскую карту?')">SIM и банки</button>
-          <button class="filter-btn" onclick="quickAsk('Как вести себя в мечети в Узбекистане?')">Этикет в мечети</button>
-        </div>
+        <div class="quick-prompts" id="quick-prompts"></div>
 
         <div class="chat-box" id="chat-box">
-          <div class="msg bot">
-            Задайте вопрос о регистрации, въезде через Россию, медосмотре в ВГУ, связи или культурном этикете.
+          <div class="msg bot" id="ai-welcome" data-i18n="aiWelcome">
+            Задайте вопрос о сроках регистрации, въезде через Россию, медосмотре, ЕРИП или загрузите фото вывески для перевода
           </div>
         </div>
 
+        <input type="file" id="photo-input" accept="image/*" hidden onchange="handlePhotoSelected(this)" />
         <div class="chat-form">
-          <input type="text" id="ai-input" placeholder="Вопрос о документах или быте" onkeydown="if(event.key==='Enter') sendQuestion()" />
-          <button class="btn btn-primary" onclick="sendQuestion()" aria-label="Отправить">
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          <button type="button" class="btn btn-secondary btn-icon" onclick="document.getElementById('photo-input').click()" title="Перевести фото вывески (в оперативной памяти)" aria-label="Перевести фото вывески">
+            <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          </button>
+          <input type="text" id="ai-input" data-i18n-placeholder="aiPlaceholder" placeholder="Вопрос о документах, учёбе или городе" onkeydown="if(event.key==='Enter') sendQuestion()" />
+          <button type="button" class="btn btn-primary btn-icon" id="ai-send-btn" onclick="sendQuestion()" aria-label="Отправить">
+            <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
           </button>
         </div>
       </div>
+
+      <div class="card" id="my-tickets-card" style="display:none;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title" data-i18n="ticketsTitle">Мои обращения в вуз</h2>
+            <p class="card-sub" data-i18n="ticketsSub">Ответы специалистов международного отдела</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="loadMyTickets()" data-i18n="refreshBtn">Обновить</button>
+        </div>
+        <div id="my-tickets-list"></div>
+      </div>
     </section>
 
-    <!-- TAB 4: SERVICES (Cards, ERIP, Phrasebook, SOS & Offline) -->
+    <!-- TAB 4: SERVICES -->
     <section id="tab-sos" class="tab">
       <div class="seg-bar" role="tablist" aria-label="Инструменты">
-        <button class="seg-btn active" data-sub="cards" onclick="switchServiceSub('cards')">Карточки</button>
-        <button class="seg-btn" data-sub="erip" onclick="switchServiceSub('erip')">ЕРИП</button>
-        <button class="seg-btn" data-sub="phrases" onclick="switchServiceSub('phrases')">Фразы</button>
-        <button class="seg-btn" data-sub="sos" onclick="switchServiceSub('sos')">SOS и 99-З</button>
+        <button class="seg-btn active" data-sub="cards" onclick="switchServiceSub('cards')" data-i18n="segCards">Карточки</button>
+        <button class="seg-btn" data-sub="erip" onclick="switchServiceSub('erip')" data-i18n="segErip">ЕРИП</button>
+        <button class="seg-btn" data-sub="phrases" onclick="switchServiceSub('phrases')" data-i18n="segPhrases">Фразы</button>
+        <button class="seg-btn" data-sub="sos" onclick="switchServiceSub('sos')" data-i18n="segSos">SOS и 99-З</button>
       </div>
 
       <div id="sub-cards" class="sub-panel active">
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">Карточки показа на весь экран</h2>
-              <p class="card-sub">Откройте нужную ситуацию и покажите экран водителю, инспектору ОГиМ, врачу или в аптеке</p>
+              <h2 class="card-title" data-i18n="showCardsTitle">Карточки показа на весь экран</h2>
+              <p class="card-sub" data-i18n="showCardsSub">Откройте нужную ситуацию и покажите экран водителю, инспектору ОГиМ, врачу или в банке</p>
             </div>
           </div>
           <div id="show-cards-list"></div>
@@ -1401,8 +1571,8 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">Навигатор ЕРИП и госпошлин</h2>
-              <p class="card-sub">Пошаговые пути оплаты общежития, обучения и регистрации без ошибок</p>
+              <h2 class="card-title" data-i18n="eripTitle">Навигатор ЕРИП и госпошлин</h2>
+              <p class="card-sub" data-i18n="eripSub">Пошаговые пути оплаты общежития, обучения и регистрации без ошибок</p>
             </div>
           </div>
           <div id="erip-list"></div>
@@ -1413,8 +1583,8 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">Ситуативный разговорник</h2>
-              <p class="card-sub">Русский, белорусский, узбекский и английский. Любую фразу можно развернуть на весь экран</p>
+              <h2 class="card-title" data-i18n="phrasesTitle">Ситуативный разговорник</h2>
+              <p class="card-sub" data-i18n="phrasesSub">Русский, белорусский, английский и узбекский — любую фразу можно развернуть и озвучить</p>
             </div>
           </div>
           <div id="phrase-list"></div>
@@ -1425,8 +1595,8 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">Экстренные номера и международный отдел</h2>
-              <p class="card-sub">Нажмите на номер, чтобы позвонить</p>
+              <h2 class="card-title" data-i18n="sosTitle">Экстренные номера и посольства</h2>
+              <p class="card-sub" data-i18n="sosSub">Нажмите на номер для вызова</p>
             </div>
           </div>
           <div id="sos-list"></div>
@@ -1435,30 +1605,35 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">Офлайн-пакет на первые 48 часов</h2>
-              <p class="card-sub" id="offline-status-text">План, 30 адресов, пути ЕРИП, карточки показа и SOS сохраняются в памяти телефона автоматически</p>
+              <h2 class="card-title" data-i18n="offlineCardTitle">Автономный пакет на первые 48 часов</h2>
+              <p class="card-sub" id="offline-status-text">План, адреса, пути ЕРИП, карточки показа и SOS кэшируются в браузере и через PWA Service Worker</p>
             </div>
           </div>
           <div class="place-actions">
             <button class="btn btn-primary btn-sm" onclick="downloadOfflineKit()">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              <span>Скачать офлайн-памятку (HTML)</span>
+              <span data-i18n="downloadHtmlBtn">Скачать памятку (HTML)</span>
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="refreshOfflineCache()">Обновить кэш</button>
+            <button class="btn btn-secondary btn-sm" onclick="refreshOfflineCache()" data-i18n="refreshCacheBtn">Обновить кэш</button>
           </div>
         </div>
 
         <div class="card" id="privacy-card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">Конфиденциальность и Закон РБ № 99-З</h2>
-              <p class="card-sub">«Атлас» не собирает ФИО, паспорта и номера телефонов. Вы можете удалить настройки и чек-лист в любой момент.</p>
+              <h2 class="card-title" data-i18n="privacyTitle">Конфиденциальность и Закон РБ № 99-З</h2>
+              <p class="card-sub" data-i18n="privacySub">«Атлас» работает по принципу Zero-PII: не запрашивает ФИО, паспорта и номера телефонов</p>
             </div>
           </div>
           <button class="btn btn-danger" onclick="deleteMyData()">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
-            <span>Удалить данные профиля</span>
+            <span data-i18n="deleteBtn">Удалить данные профиля</span>
           </button>
+        </div>
+
+        <div class="quiet-foot">
+          <span>Закон РБ № 99-З · Указ № 60</span>
+          <a href="/admin" data-i18n="adminLink">Кабинет отдела международных связей →</a>
         </div>
       </div>
     </section>
@@ -1471,7 +1646,13 @@
         <div class="brand-mark" aria-hidden="true"></div>
         <span id="overlay-role">Показать сотруднику</span>
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="closeShowCard()">Закрыть</button>
+      <div class="show-overlay-actions">
+        <button class="btn btn-secondary btn-sm" onclick="speakOverlayText()">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <span data-i18n="speakBtn">Озвучить</span>
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="closeShowCard()" data-i18n="closeBtn">Закрыть</button>
+      </div>
     </div>
     <div class="show-overlay-main">
       <div class="show-overlay-text" id="overlay-text"></div>
@@ -1483,26 +1664,560 @@
   <nav aria-label="Разделы">
     <button class="active" data-tab="plan" onclick="switchTab('plan', this)">
       <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>
-      <span>План</span>
+      <span data-i18n="navPlan">План</span>
     </button>
     <button data-tab="map" onclick="switchTab('map', this)">
       <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
-      <span>Карта</span>
+      <span data-i18n="navMap">Карта</span>
     </button>
     <button data-tab="ai" onclick="switchTab('ai', this)">
       <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      <span>Ассистент</span>
+      <span data-i18n="navAi">Ассистент</span>
     </button>
     <button data-tab="sos" onclick="switchTab('sos', this)">
       <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      <span>Сервисы</span>
+      <span data-i18n="navServices">Сервисы</span>
     </button>
   </nav>
 
   <script>
     const tg = window.Telegram && window.Telegram.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
-    const USER_ID = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 10001;
+
+    const ANON_UID_KEY = "atlas_anon_uid";
+    const LANG_KEY = "atlas_ui_lang";
+    const CACHE_KEY = "atlas_offline_v2";
+
+    function getOrCreateUserId() {
+      const tgUid = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
+      if (tgUid) return tgUid;
+      try {
+        let saved = parseInt(localStorage.getItem(ANON_UID_KEY) || "", 10);
+        if (!saved || Number.isNaN(saved)) {
+          saved = 100000000 + Math.floor(Math.random() * 899999999);
+          localStorage.setItem(ANON_UID_KEY, String(saved));
+        }
+        return saved;
+      } catch (_) {
+        return 10001;
+      }
+    }
+
+    let USER_ID = getOrCreateUserId();
+    let uiLang = (function () {
+      try { return localStorage.getItem(LANG_KEY) || "ru"; } catch (_) { return "ru"; }
+    })();
+
+    const I18N = {
+      ru: {
+        appTitle: "Атлас",
+        offlineBadge: "Офлайн",
+        zeroPiiBtn: "Без сбора ПД",
+        regHeading: "Временная регистрация",
+        offlineBtn: "Офлайн",
+        paramsBtn: "Параметры",
+        routeProgress: "Прогресс по маршруту",
+        changeBtn: "Изменить",
+        tripParamsTitle: "Параметры поездки",
+        tripParamsSub: "Сроки и маршрут рассчитываются детерминированным алгоритмом по нормативной базе",
+        lblCitizenship: "Гражданство",
+        lblDestination: "Страна визита",
+        lblUniversity: "Университет и город",
+        lblHousing: "Жильё",
+        optDorm: "Общежитие вуза",
+        optPrivate: "Квартира или у знакомых",
+        optHotel: "Гостиница или хостел",
+        lblPurpose: "Цель поездки",
+        optStudy: "Учёба или обмен",
+        optTourism: "Туризм или деловая поездка",
+        lblArrival: "Дата въезда",
+        viaRfTitle: "Въезд в Беларусь через Россию",
+        viaRfHint: "При въезде через РФ онлайн-регистрация на e-pasluga.by недоступна — маршрут перестроится на личный визит в ОГиМ",
+        savePlanBtn: "Обновить план",
+        nearMeBtn: "Рядом со мной",
+        catAll: "Все",
+        catOgim: "ОГиМ",
+        catUni: "Вуз",
+        catDorm: "Общежития",
+        catServices: "Документы и транспорт",
+        catMed: "Медицина и аптеки",
+        catBank: "Банки",
+        catTelecom: "Связь",
+        catFood: "Питание",
+        flagHalal: "Халяль",
+        flagAccess: "Доступная среда",
+        dirTitle: "Справочник адресов",
+        dirSub: "Расстояние рассчитывается локально на телефоне без передачи геопозиции на сервер",
+        searchPlaceholder: "Поиск по названию, улице или услуге",
+        aiSub: "Отвечает строго по верифицированной базе НПА и вуза, скрывая паспорта и телефоны до отправки",
+        aiWelcome: "Задайте вопрос о сроках регистрации, въезде через Россию, медосмотре, ЕРИП или загрузите фото вывески для перевода",
+        aiPlaceholder: "Вопрос о документах, учёбе или городе",
+        aiThinking: "Проверяю верифицированную базу НПА…",
+        photoThinking: "Распознаю вывеску в оперативной памяти без записи на диск…",
+        ticketsTitle: "Мои обращения в вуз",
+        ticketsSub: "Ответы специалистов международного отдела",
+        refreshBtn: "Обновить",
+        segCards: "Карточки",
+        segErip: "ЕРИП",
+        segPhrases: "Фразы",
+        segSos: "SOS и 99-З",
+        showCardsTitle: "Карточки показа на весь экран",
+        showCardsSub: "Откройте нужную ситуацию и покажите экран водителю, инспектору ОГиМ, врачу или в банке",
+        eripTitle: "Навигатор ЕРИП и госпошлин",
+        eripSub: "Пошаговые пути оплаты общежития, обучения и регистрации без ошибок",
+        phrasesTitle: "Ситуативный разговорник",
+        phrasesSub: "Русский, белорусский, английский и узбекский — любую фразу можно развернуть и озвучить",
+        sosTitle: "Экстренные номера и посольства",
+        sosSub: "Нажмите на номер для вызова",
+        offlineCardTitle: "Автономный пакет на первые 48 часов",
+        downloadHtmlBtn: "Скачать памятку (HTML)",
+        refreshCacheBtn: "Обновить кэш",
+        privacyTitle: "Конфиденциальность и Закон РБ № 99-З",
+        privacySub: "«Атлас» работает по принципу Zero-PII: не запрашивает ФИО, паспорта и номера телефонов",
+        deleteBtn: "Удалить данные профиля",
+        adminLink: "Кабинет отдела международных связей →",
+        speakBtn: "Озвучить",
+        closeBtn: "Закрыть",
+        navPlan: "План",
+        navMap: "Карта",
+        navAi: "Ассистент",
+        navServices: "Сервисы",
+        doneWord: "Готово",
+        regDone: "Оформлена",
+        regExpired: "Срок истёк",
+        deadlinePrefix: "Крайний срок — ",
+        expiredPrefix: "Нужно было до ",
+        onMapBtn: "На карте",
+        copyAddrBtn: "Скопировать адрес",
+        copiedBtn: "Скопировано",
+        routeBtn: "Маршрут",
+        fullscreenBtn: "На весь экран",
+        showBtn: "Показать",
+        copyPathBtn: "Скопировать путь",
+        banksMapBtn: "Банки на карте",
+        noUniOpt: "Без привязки к вузу (туризм)",
+        escalateBtn: "Передать вопрос в международный отдел",
+        piiMasked: "Privacy Firewall скрыл личные данные",
+        piiSentAs: "Передано после фильтрации:",
+        sourcesLabel: "Проверенные источники",
+        ticketWaiting: "Ожидает ответа отдела",
+        ticketAnswered: "Ответ получен",
+      },
+      by: {
+        appTitle: "Атлас",
+        offlineBadge: "Афлайн",
+        zeroPiiBtn: "Без збору ПД",
+        regHeading: "Часовая рэгістрацыя",
+        offlineBtn: "Афлайн",
+        paramsBtn: "Параметры",
+        routeProgress: "Прагрэс па маршруце",
+        changeBtn: "Змяніць",
+        tripParamsTitle: "Параметры паездкі",
+        tripParamsSub: "Тэрміны і маршрут разлічваюцца дэтэрмінаваным алгарытмам па базе НПА",
+        lblCitizenship: "Грамадзянства",
+        lblDestination: "Краіна візіту",
+        lblUniversity: "Універсітэт і горад",
+        lblHousing: "Жыллё",
+        optDorm: "Інтэрнат ВНУ",
+        optPrivate: "Кватэра або ў знаёмых",
+        optHotel: "Гасцініца або хостэл",
+        lblPurpose: "Мэта паездкі",
+        optStudy: "Вучоба або абмен",
+        optTourism: "Турызм або дзелавая паездка",
+        lblArrival: "Дата ўезду",
+        viaRfTitle: "Уезд у Беларусь праз Расію",
+        viaRfHint: "Пры ўездзе праз РФ анлайн-рэгістрацыя на e-pasluga.by недаступная — спатрэбіцца візіт у АГіМ",
+        savePlanBtn: "Абнавіць план",
+        nearMeBtn: "Побач са мной",
+        catAll: "Усе",
+        catOgim: "АГіМ",
+        catUni: "ВНУ",
+        catDorm: "Інтэрнаты",
+        catServices: "Дакументы і транспарт",
+        catMed: "Медыцына і аптэкі",
+        catBank: "Банкі",
+        catTelecom: "Сувязь",
+        catFood: "Харчаванне",
+        flagHalal: "Халяль",
+        flagAccess: "Даступнае асяроддзе",
+        dirTitle: "Даведнік адрасоў",
+        dirSub: "Адлегласць разлічваецца лакальна на тэлефоне без перадачы геапазіцыі",
+        searchPlaceholder: "Пошук па назве, вуліцы або паслузе",
+        aiSub: "Адказвае строга па праверанай базе НПА і ВНУ, хаваючы пашпарты і тэлефоны да адпраўкі",
+        aiWelcome: "Задайце пытанне пра рэгістрацыю, уезд праз РФ, медагляд, АРІП або загрузіце фота шыльды",
+        aiPlaceholder: "Пытанне пра дакументы, вучобу або горад",
+        aiThinking: "Правяраю базу НПА…",
+        photoThinking: "Распазнаю шыльду ў аператыўнай памяці без запісу на дыск…",
+        ticketsTitle: "Мае звароты ў ВНУ",
+        ticketsSub: "Адказы спецыялістаў міжнароднага аддзела",
+        refreshBtn: "Абнавіць",
+        segCards: "Карткі",
+        segErip: "АРІП",
+        segPhrases: "Фразы",
+        segSos: "SOS і 99-З",
+        showCardsTitle: "Карткі паказу на ўвесь экран",
+        showCardsSub: "Адкрыйце патрэбную сітуацыю і пакажыце экран кіроўцу, інспектару АГіМ, лекару або ў банку",
+        eripTitle: "Навігатар АРІП і дзяржпошлін",
+        eripSub: "Паслядоўныя шляхі аплаты інтэрната, навучання і рэгістрацыі",
+        phrasesTitle: "Сітуатыўны размоўнік",
+        phrasesSub: "Руская, беларуская, англійская і ўзбекская мовы з агучваннем",
+        sosTitle: "Экстранныя нумары і пасольствы",
+        sosSub: "Націсніце на нумар для выкліку",
+        offlineCardTitle: "Аўтаномны пакет на першыя 48 гадзін",
+        downloadHtmlBtn: "Спампаваць памятку (HTML)",
+        refreshCacheBtn: "Абнавіць кэш",
+        privacyTitle: "Канфідэнцыяльнасць і Закон РБ № 99-З",
+        privacySub: "«Атлас» працуе па прынцыпе Zero-PII: не збірае ПІБ, пашпарты і тэлефоны",
+        deleteBtn: "Выдаліць даныя профілю",
+        adminLink: "Кабінет міжнароднага аддзела →",
+        speakBtn: "Агучыць",
+        closeBtn: "Закрыць",
+        navPlan: "План",
+        navMap: "Карта",
+        navAi: "Асістэнт",
+        navServices: "Сэрвісы",
+        doneWord: "Гатова",
+        regDone: "Аформлена",
+        regExpired: "Тэрмін скончыўся",
+        deadlinePrefix: "Крайні тэрмін — ",
+        expiredPrefix: "Трэба было да ",
+        onMapBtn: "На карце",
+        copyAddrBtn: "Скапіраваць адрас",
+        copiedBtn: "Скапіравана",
+        routeBtn: "Маршрут",
+        fullscreenBtn: "На ўвесь экран",
+        showBtn: "Паказаць",
+        copyPathBtn: "Скапіраваць шлях",
+        banksMapBtn: "Банкі на карце",
+        noUniOpt: "Без прывязкі да ВНУ (турызм)",
+        escalateBtn: "Перадаць пытанне ў міжнародны аддзел",
+        piiMasked: "Privacy Firewall схаваў асабістыя даныя",
+        piiSentAs: "Перададзена пасля фільтрацыі:",
+        sourcesLabel: "Правераныя крыніцы",
+        ticketWaiting: "Чакае адказу",
+        ticketAnswered: "Адказ атрыманы",
+      },
+      en: {
+        appTitle: "Atlas",
+        offlineBadge: "Offline",
+        zeroPiiBtn: "Zero-PII",
+        regHeading: "Temporary registration",
+        offlineBtn: "Offline",
+        paramsBtn: "Settings",
+        routeProgress: "Checklist progress",
+        changeBtn: "Edit",
+        tripParamsTitle: "Arrival parameters",
+        tripParamsSub: "Deadlines and channels are calculated deterministically from verified migration rules",
+        lblCitizenship: "Citizenship",
+        lblDestination: "Destination country",
+        lblUniversity: "University & city",
+        lblHousing: "Accommodation",
+        optDorm: "University dormitory",
+        optPrivate: "Private apartment / host",
+        optHotel: "Hotel or hostel",
+        lblPurpose: "Purpose of visit",
+        optStudy: "Study or exchange",
+        optTourism: "Tourism or business",
+        lblArrival: "Arrival date",
+        viaRfTitle: "Entered Belarus via Russia",
+        viaRfHint: "Online registration on e-pasluga.by is unavailable when entering via Russia — requires an in-person OGiM visit",
+        savePlanBtn: "Update plan",
+        nearMeBtn: "Near me",
+        catAll: "All",
+        catOgim: "Migration (OGiM)",
+        catUni: "University",
+        catDorm: "Dormitories",
+        catServices: "Docs & transit",
+        catMed: "Medical & 24/7 pharmacy",
+        catBank: "Banks",
+        catTelecom: "SIM & telecom",
+        catFood: "Food & shops",
+        flagHalal: "Halal",
+        flagAccess: "Accessible",
+        dirTitle: "Verified directory",
+        dirSub: "Distances are computed locally on your phone without sending GPS data to the server",
+        searchPlaceholder: "Search by name, street or service",
+        aiSub: "Answers strictly from verified legal & university cards; passports and phones are redacted locally",
+        aiWelcome: "Ask about registration deadlines, entry via Russia, medical checkup, ERIP payments, or upload a sign photo to translate",
+        aiPlaceholder: "Ask about documents, dorms or city navigation",
+        aiThinking: "Checking verified legal knowledge base…",
+        photoThinking: "Translating sign in RAM without saving to disk…",
+        ticketsTitle: "My university requests",
+        ticketsSub: "Replies from the international relations office",
+        refreshBtn: "Refresh",
+        segCards: "Show cards",
+        segErip: "ERIP pay",
+        segPhrases: "Phrases",
+        segSos: "SOS & Privacy",
+        showCardsTitle: "Full-screen local cards",
+        showCardsSub: "Open a situation and show your screen to a taxi driver, OGiM officer, doctor or bank clerk",
+        eripTitle: "ERIP & state fee navigator",
+        eripSub: "Step-by-step payment trees for dormitories, tuition and migration fees",
+        phrasesTitle: "Situational phrasebook",
+        phrasesSub: "Russian, Belarusian, English and Uzbek — expand fullscreen or play audio",
+        sosTitle: "Emergency numbers & embassies",
+        sosSub: "Tap any phone number to call",
+        offlineCardTitle: "First 48 hours offline kit",
+        downloadHtmlBtn: "Download offline guide (HTML)",
+        refreshCacheBtn: "Sync cache",
+        privacyTitle: "Privacy & Belarus Law No. 99-Z",
+        privacySub: "Atlas runs in strict Zero-PII mode: no names, passport numbers or phone numbers are collected",
+        deleteBtn: "Delete my profile data",
+        adminLink: "International office dashboard →",
+        speakBtn: "Speak",
+        closeBtn: "Close",
+        navPlan: "Plan",
+        navMap: "Map",
+        navAi: "AIst",
+        navServices: "Toolkit",
+        doneWord: "Done",
+        regDone: "Completed",
+        regExpired: "Overdue",
+        deadlinePrefix: "Deadline — ",
+        expiredPrefix: "Was due by ",
+        onMapBtn: "On map",
+        copyAddrBtn: "Copy address",
+        copiedBtn: "Copied",
+        routeBtn: "Route",
+        fullscreenBtn: "Fullscreen",
+        showBtn: "Show",
+        copyPathBtn: "Copy path",
+        banksMapBtn: "Banks on map",
+        noUniOpt: "No university (tourism)",
+        escalateBtn: "Forward question to international office",
+        piiMasked: "Privacy Firewall redacted personal data",
+        piiSentAs: "Sent after redaction:",
+        sourcesLabel: "Verified sources",
+        ticketWaiting: "Awaiting office reply",
+        ticketAnswered: "Answered",
+      },
+      uz: {
+        appTitle: "Atlas",
+        offlineBadge: "Oflayn",
+        zeroPiiBtn: "Shaxsiy ma’lumotsiz",
+        regHeading: "Vaqtinchalik ro‘yxatdan o‘tish",
+        offlineBtn: "Oflayn",
+        paramsBtn: "Sozlamalar",
+        routeProgress: "Yo‘nalish jarayoni",
+        changeBtn: "O‘zgartirish",
+        tripParamsTitle: "Safar parametrlari",
+        tripParamsSub: "Muddatlar va ro‘yxatdan o‘tish tartibi rasmiy qoidalar asosida aniq hisoblanadi",
+        lblCitizenship: "Fuqarolik",
+        lblDestination: "Boriladigan davlat",
+        lblUniversity: "Universitet va shahar",
+        lblHousing: "Turar joy",
+        optDorm: "Universitet yotoqxonasi",
+        optPrivate: "Ijara xonadon yoki tanishlar",
+        optHotel: "Mehmonxona yoki xostel",
+        lblPurpose: "Safar maqsadi",
+        optStudy: "O‘qish yoki almashinuv",
+        optTourism: "Turizm yoki xizmat safari",
+        lblArrival: "Kirish sanasi",
+        viaRfTitle: "Belarusga Rossiya orqali kirish",
+        viaRfHint: "Rossiya orqali kirilganda e-pasluga.by onlayn ro‘yxati ishlamaydi — OGiM bo‘limiga shaxsan boriladi",
+        savePlanBtn: "Rejani yangilash",
+        nearMeBtn: "Yaqinimda",
+        catAll: "Barchasi",
+        catOgim: "OGiM",
+        catUni: "Universitet",
+        catDorm: "Yotoqxona",
+        catServices: "Hujjat va transport",
+        catMed: "Tibbiyot va dorixona",
+        catBank: "Banklar",
+        catTelecom: "SIM va aloqa",
+        catFood: "Ovqatlanish",
+        flagHalal: "Halol",
+        flagAccess: "Qulay muhit",
+        dirTitle: "Tekshirilgan manzillar",
+        dirSub: "Masofa joylashuvni serverga yubormasdan telefonda hisoblanadi",
+        searchPlaceholder: "Nomi, ko‘cha yoki xizmat bo‘yicha qidirish",
+        aiSub: "Faqat tasdiqlangan qonun va OTM bazasi bo‘yicha javob beradi; pasport va raqamlar yashiriladi",
+        aiWelcome: "Ro‘yxatdan o‘tish muddati, Rossiya orqali kirish, tibbiy ko‘rik, ERIP to‘lovi haqida so‘rang yoki yozuv rasmini yuklang",
+        aiPlaceholder: "Hujjatlar, o‘qish yoki shahar bo‘yicha savol",
+        aiThinking: "Tasdiqlangan huquqiy baza tekshirilmoqda…",
+        photoThinking: "Rasm xotirada saqlanmasdan tarjima qilinmoqda…",
+        ticketsTitle: "Xalqaro bo‘limga murojaatlarim",
+        ticketsSub: "Universitet mutaxassislari javoblari",
+        refreshBtn: "Yangilash",
+        segCards: "Kartochkalar",
+        segErip: "ERIP to‘lov",
+        segPhrases: "Iboralar",
+        segSos: "SOS va 99-Z",
+        showCardsTitle: "Ekranda ko‘rsatish kartochkalari",
+        showCardsSub: "Kerakli vaziyatni ochib, haydovchi, OGiM xodimi, shifokor yoki bank xodimiga ko‘rsating",
+        eripTitle: "ERIP va davlat boji navigatori",
+        eripSub: "Yotoqxona, kontrakt va ro‘yxatdan o‘tish to‘lovlari yo‘riqnomasi",
+        phrasesTitle: "Vaziyatli so‘zlashgich",
+        phrasesSub: "Rus, belarus, ingliz va o‘zbek tillarida — ekranga chiqarish va ovozli o‘qish",
+        sosTitle: "Shoshilinch raqamlar va elchixonalar",
+        sosSub: "Qo‘ng‘iroq qilish uchun raqamni bosing",
+        offlineCardTitle: "Dastlabki 48 soat uchun oflayn paket",
+        downloadHtmlBtn: "Oflayn eslatmani yuklab olish (HTML)",
+        refreshCacheBtn: "Keshni yangilash",
+        privacyTitle: "Maxfiylik va 99-Z Qonuni",
+        privacySub: "Atlas Zero-PII tamoyilida ishlaydi: F.I.Sh., pasport va telefon raqamlari yig‘ilmaydi",
+        deleteBtn: "Profil ma’lumotlarini o‘chirish",
+        adminLink: "Xalqaro bo‘lim kabineti →",
+        speakBtn: "Ovozli o‘qish",
+        closeBtn: "Yopish",
+        navPlan: "Reja",
+        navMap: "Xarita",
+        navAi: "AIst",
+        navServices: "Xizmatlar",
+        doneWord: "Bajarildi",
+        regDone: "Rasmiylashtirildi",
+        regExpired: "Muddati o‘tgan",
+        deadlinePrefix: "Oxirgi muddat — ",
+        expiredPrefix: "Muddat edi: ",
+        onMapBtn: "Xaritada",
+        copyAddrBtn: "Manzilni nusxalash",
+        copiedBtn: "Nusxalandi",
+        routeBtn: "Yo‘nalish",
+        fullscreenBtn: "To‘liq ekran",
+        showBtn: "Ko‘rsatish",
+        copyPathBtn: "Yo‘lni nusxalash",
+        banksMapBtn: "Xaritadagi banklar",
+        noUniOpt: "OTMsiz (turizm)",
+        escalateBtn: "Savolni xalqaro bo‘limga yuborish",
+        piiMasked: "Privacy Firewall shaxsiy ma’lumotlarni yashirdi",
+        piiSentAs: "Filtrdan keyin yuborildi:",
+        sourcesLabel: "Tasdiqlangan manbalar",
+        ticketWaiting: "Javob kutilmoqda",
+        ticketAnswered: "Javob berildi",
+      },
+      zh: {
+        appTitle: "Atlas · 阿特拉斯",
+        offlineBadge: "离线",
+        zeroPiiBtn: "零隐私收集",
+        regHeading: "临时居留登记",
+        offlineBtn: "离线包",
+        paramsBtn: "行程设置",
+        routeProgress: "办理进度",
+        changeBtn: "修改",
+        tripParamsTitle: "行程参数",
+        tripParamsSub: "系统根据白俄罗斯官方移民法规确定性计算截止日期与办理渠道",
+        lblCitizenship: "国籍",
+        lblDestination: "目的地国家",
+        lblUniversity: "高校与城市",
+        lblHousing: "住宿类型",
+        optDorm: "学校宿舍",
+        optPrivate: "校外租房 / 亲友家",
+        optHotel: "酒店或青旅",
+        lblPurpose: "来访目的",
+        optStudy: "留学或交换",
+        optTourism: "旅游或商务",
+        lblArrival: "入境日期",
+        viaRfTitle: "经俄罗斯入境白俄罗斯",
+        viaRfHint: "经俄罗斯入境无法在 e-pasluga.by 在线登记，须前往移民局 (OGiM) 或国际处现场办理",
+        savePlanBtn: "更新计划",
+        nearMeBtn: "距离最近",
+        catAll: "全部",
+        catOgim: "移民局 (OGiM)",
+        catUni: "高校",
+        catDorm: "宿舍",
+        catServices: "证件与交通",
+        catMed: "医疗与24h药店",
+        catBank: "银行",
+        catTelecom: "电话卡",
+        catFood: "餐饮",
+        flagHalal: "清真",
+        flagAccess: "无障碍",
+        dirTitle: "核验地址名录",
+        dirSub: "距离仅在手机本地计算，绝不上传您的位置信息",
+        searchPlaceholder: "搜索机构名称、街道或服务",
+        aiSub: "严格依据核验法规与高校知识库回答，发送前自动脱敏护照号与电话",
+        aiWelcome: "可咨询居留登记期限、经俄入境、体检、ERIP缴费，或点击相机上传路牌照片即时翻译",
+        aiPlaceholder: "输入关于证件、宿舍或城市生活的问题",
+        aiThinking: "正在检索核验法规库…",
+        photoThinking: "正在内存中识别并翻译路牌（不写入磁盘）…",
+        ticketsTitle: "提交给国际处的咨询",
+        ticketsSub: "高校国际交流处老师的回复",
+        refreshBtn: "刷新",
+        segCards: "出示卡",
+        segErip: "ERIP缴费",
+        segPhrases: "常用语",
+        segSos: "急救与隐私",
+        showCardsTitle: "全屏出示沟通卡",
+        showCardsSub: "打开对应场景并全屏出示给司机、移民官、医生或银行工作人员",
+        eripTitle: "ERIP 与规费缴费导航",
+        eripSub: "住宿费、学费及居留登记规费分步路径",
+        phrasesTitle: "场景会话手册",
+        phrasesSub: "俄语、白俄罗斯语、英语 — 支持全屏展示与语音朗读",
+        sosTitle: "紧急电话与各国使馆",
+        sosSub: "点击号码即可拨打",
+        offlineCardTitle: "入境前48小时离线包",
+        downloadHtmlBtn: "下载离线手册 (HTML)",
+        refreshCacheBtn: "更新缓存",
+        privacyTitle: "隐私保护与白俄罗斯第99-Z号法律",
+        privacySub: "采用 Zero-PII 架构：不收集姓名、护照号或手机号码",
+        deleteBtn: "一键清除个人设置",
+        adminLink: "高校国际处工作台 →",
+        speakBtn: "朗读",
+        closeBtn: "关闭",
+        navPlan: "计划",
+        navMap: "地图",
+        navAi: "AIst助手",
+        navServices: "工具箱",
+        doneWord: "已完成",
+        regDone: "已办理",
+        regExpired: "已超期",
+        deadlinePrefix: "截止日期 — ",
+        expiredPrefix: "原截止于 ",
+        onMapBtn: "地图定位",
+        copyAddrBtn: "复制地址",
+        copiedBtn: "已复制",
+        routeBtn: "路线",
+        fullscreenBtn: "全屏出示",
+        showBtn: "展示",
+        copyPathBtn: "复制路径",
+        banksMapBtn: "查看附近银行",
+        noUniOpt: "无绑定高校（旅游）",
+        escalateBtn: "转交高校国际处老师解答",
+        piiMasked: "Privacy Firewall 已自动脱敏敏感信息",
+        piiSentAs: "脱敏后发送内容：",
+        sourcesLabel: "核验法规来源",
+        ticketWaiting: "等待回复",
+        ticketAnswered: "已回复",
+      }
+    };
+
+    const QUICK_PROMPTS_BY_LANG = {
+      ru: [
+        { label: "Въезд через РФ", q: "Как оформить регистрацию при въезде в Беларусь через Россию?" },
+        { label: "Штрафы ст. 24.35", q: "Какой штраф за просрочку регистрации в Беларуси?" },
+        { label: "SIM и ЕРИП", q: "Где оформить SIM-карту и как платить через ЕРИП?" },
+        { label: "Безвиз и туризм", q: "Какие правила безвизового въезда и страховки в Беларуси?" },
+      ],
+      by: [
+        { label: "Уезд праз РФ", q: "Як аформіць рэгістрацыю пры ўездзе праз Расію?" },
+        { label: "Штрафы арт. 24.35", q: "Які штраф за пратэрміноўку рэгістрацыі ў Беларусі?" },
+        { label: "SIM і АРІП", q: "Дзе аформіць SIM-карту і як плаціць праз АРІП?" },
+        { label: "Бязвіз", q: "Якія правілы бязвізавага ўезду ў Беларусь?" },
+      ],
+      en: [
+        { label: "Entry via Russia", q: "How do I register in Belarus if I entered via Russia?" },
+        { label: "Overstay fines", q: "What are the fines for late registration under Art. 24.35?" },
+        { label: "SIM & ERIP", q: "Where to get a local SIM card and pay via ERIP?" },
+        { label: "Lost passport", q: "What should I do if I lost my passport in Belarus?" },
+      ],
+      uz: [
+        { label: "Rossiya orqali kirish", q: "Rossiya orqali kirganda Belarusda qanday ro‘yxatdan o‘tiladi?" },
+        { label: "Jarimalar (24.35)", q: "Ro‘yxatdan o‘tish muddati buzilsa qanday jarima bor?" },
+        { label: "SIM va ERIP", q: "SIM-karta olish va ERIP orqali to‘lash tartibi qanday?" },
+        { label: "Tibbiy sug‘urta", q: "Talabalar uchun tibbiy sug‘urta va ko‘rik qayerda o‘tiladi?" },
+      ],
+      zh: [
+        { label: "经俄罗斯入境", q: "经俄罗斯入境白俄罗斯如何办理居留登记？" },
+        { label: "中白免签与期限", q: "中国公民免签入境和居留登记期限是多少天？" },
+        { label: "电话卡与ERIP", q: "如何办理白俄罗斯电话卡并使用ERIP缴费？" },
+        { label: "护照遗失处理", q: "在白俄罗斯丢失护照怎么办？" },
+      ]
+    };
+
+    function t(key) {
+      const pack = I18N[uiLang] || I18N.ru;
+      return pack[key] !== undefined ? pack[key] : (I18N.ru[key] || key);
+    }
 
     const ICONS = {
       pin: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
@@ -1512,12 +2227,6 @@
       building: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/></svg>',
       alert: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
       check: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>',
-    };
-
-    const HOUSING_LABELS = {
-      dorm: "Общежитие",
-      private: "Частное жильё",
-      hotel: "Гостиница",
     };
 
     const PIN_COLORS = {
@@ -1531,19 +2240,20 @@
     };
 
     const CAT_LABELS = {
-      ogim: "ОГиМ",
-      university: "Вуз",
-      dorm: "Общежитие",
-      services: "Документы / транспорт",
-      pharmacy: "Медицина",
-      bank: "Банк",
-      telecom: "Связь",
-      halal: "Питание / ТЦ",
+      ogim: "catOgim",
+      university: "catUni",
+      dorm: "catDorm",
+      services: "catServices",
+      pharmacy: "catMed",
+      bank: "catBank",
+      telecom: "catTelecom",
+      halal: "catFood",
     };
 
-    const CACHE_KEY = "atlas_offline_v1";
+    let allModules = { countries: [], universities: [] };
     let mapInstance = null;
     let markersLayer = null;
+    let userLocMarker = null;
     let markersById = {};
     let loadedMapData = { city: "Витебск", university: "", center: [55.1825, 30.2245], points: [] };
     let loadedPlan = null;
@@ -1552,7 +2262,50 @@
     let activeMapCat = "";
     let filterHalal = false;
     let filterAccessible = false;
+    let userCoords = null; // { lat, lon } — хранится только в оперативной памяти браузера
     let lastQuestion = "";
+
+    function applyStaticTranslations() {
+      document.documentElement.lang = uiLang === "by" ? "be" : uiLang;
+      const sel = document.getElementById("lang-select");
+      if (sel && sel.value !== uiLang) sel.value = uiLang;
+
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        if (key) el.textContent = t(key);
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+        const key = el.getAttribute("data-i18n-placeholder");
+        if (key) el.setAttribute("placeholder", t(key));
+      });
+      renderQuickPrompts();
+      if (loadedPlan) renderPlanView(loadedPlan);
+      if (loadedToolkit) renderToolkit(loadedToolkit);
+      if (loadedMapData && loadedMapData.points) renderMapAndDirectory();
+    }
+
+    function setUiLang(lang) {
+      uiLang = I18N[lang] ? lang : "ru";
+      try { localStorage.setItem(LANG_KEY, uiLang); } catch (_) {}
+      syncUniversitiesForCountry(true);
+      applyStaticTranslations();
+    }
+
+    function renderQuickPrompts() {
+      const box = document.getElementById("quick-prompts");
+      if (!box) return;
+      const list = QUICK_PROMPTS_BY_LANG[uiLang] || QUICK_PROMPTS_BY_LANG.ru;
+      box.innerHTML = list.map((item, i) =>
+        `<button type="button" class="filter-btn" onclick="quickAskIdx(${i})">${escapeHtml(item.label)}</button>`
+      ).join("");
+    }
+
+    function quickAskIdx(idx) {
+      const list = QUICK_PROMPTS_BY_LANG[uiLang] || QUICK_PROMPTS_BY_LANG.ru;
+      if (!list[idx]) return;
+      document.getElementById("ai-input").value = list[idx].q;
+      sendQuestion();
+    }
 
     function readOfflineCache() {
       try { return JSON.parse(localStorage.getItem(CACHE_KEY) || "{}"); } catch (_) { return {}; }
@@ -1577,7 +2330,7 @@
       if (!el || !iso) return;
       const d = new Date(iso);
       const stamp = d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-      el.textContent = `Последнее сохранение в память телефона: ${stamp}. План, справочник адресов, ЕРИП, карточки и SOS доступны без интернета.`;
+      el.textContent = `Кэш обновлён ${stamp} · план, адреса, ЕРИП, карточки и SOS доступны без интернета`;
     }
 
     window.addEventListener("offline", () => setOfflineMode(true));
@@ -1586,13 +2339,14 @@
     document.getElementById("arrival").value = new Date().toISOString().slice(0, 10);
 
     function switchTab(name, btn) {
-      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach(tEl => tEl.classList.remove("active"));
       document.getElementById("tab-" + name).classList.add("active");
       document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
       if (btn) btn.classList.add("active");
       if (name === "map") {
-        setTimeout(() => { initMap(); loadMapPoints(); }, 80);
+        setTimeout(() => { initMap(); loadMapPoints(); }, 60);
       }
+      if (name === "ai") { loadMyTickets(); }
       if (name === "sos") { loadToolkit(); }
     }
 
@@ -1627,13 +2381,37 @@
       panel.classList.toggle("open", open);
     }
 
+    function syncUniversitiesForCountry(preserveCurrent = false) {
+      const dest = (document.getElementById("destination").value || "BY").toUpperCase();
+      const uniSel = document.getElementById("university");
+      const prevVal = uniSel.value;
+      const matching = (allModules.universities || []).filter(u => u.country_code.toUpperCase() === dest);
+
+      uniSel.innerHTML = matching
+        .map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.short_name)} — ${escapeHtml(u.city)}</option>`)
+        .join("") + `<option value="">${escapeHtml(t("noUniOpt"))}</option>`;
+
+      if (preserveCurrent && (prevVal === "" || matching.some(u => u.id === prevVal))) {
+        uniSel.value = prevVal;
+      } else if (matching.length > 0) {
+        uniSel.value = matching[0].id;
+      } else {
+        uniSel.value = "";
+      }
+
+      const rfWrap = document.getElementById("via-rf-wrap");
+      if (rfWrap) rfWrap.style.display = dest === "BY" ? "flex" : "none";
+    }
+
     async function applyParams() {
-      await loadPlan();
+      await savePlan();
       await loadToolkit();
+      await preloadMapCache();
       toggleParams(false);
     }
 
     async function loadModules() {
+      applyStaticTranslations();
       let data = null;
       try {
         const res = await fetch("/api/modules");
@@ -1646,21 +2424,73 @@
         setOfflineMode(true);
       }
       if (!data) return;
+      allModules = data;
 
+      // Беларусь первой в списке стран визита
+      const sortedCountries = [...data.countries].sort((a, b) => (a.code === "BY" ? -1 : b.code === "BY" ? 1 : 0));
       const destSel = document.getElementById("destination");
-      destSel.innerHTML = data.countries
+      destSel.innerHTML = sortedCountries
         .map(c => `<option value="${escapeHtml(c.code)}">${escapeHtml(c.name)} (${escapeHtml(c.code)})</option>`)
         .join("");
 
-      const uniSel = document.getElementById("university");
-      uniSel.innerHTML = data.universities
-        .map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.short_name)} — ${escapeHtml(u.city)}</option>`)
-        .join("") + `<option value="">Без привязки к вузу</option>`;
+      syncUniversitiesForCountry(false);
 
-      await loadPlan();
-      // Фоново прогреваем офлайн-кэш (карта + сервисы ЕРИП/карточки/SOS)
+      // Безопасное чтение сохранённого профиля без перезаписи настроек по умолчанию
+      await restoreProfileOrDefault();
       loadToolkit();
       preloadMapCache();
+      loadMyTickets();
+    }
+
+    async function restoreProfileOrDefault() {
+      try {
+        const res = await fetch(`/api/profile?tg_id=${encodeURIComponent(USER_ID)}`);
+        if (!res.ok) throw new Error("http");
+        const prof = await res.json();
+        const plan = prof.plan;
+        if (prof.exists && plan) {
+          populateFormFromPlan(plan);
+          if (!localStorage.getItem(LANG_KEY) && prof.lang && I18N[prof.lang]) {
+            uiLang = prof.lang;
+            applyStaticTranslations();
+          }
+        }
+        if (plan) {
+          loadedPlan = plan;
+          writeOfflineCache({ plan });
+          renderPlanView(plan);
+        }
+      } catch (_) {
+        const cachedPlan = readOfflineCache().plan;
+        setOfflineMode(true);
+        if (cachedPlan) {
+          populateFormFromPlan(cachedPlan);
+          loadedPlan = cachedPlan;
+          renderPlanView(cachedPlan);
+        }
+      }
+    }
+
+    function populateFormFromPlan(plan) {
+      const citSel = document.getElementById("citizenship");
+      if ([...citSel.options].some(o => o.value === plan.citizenship)) {
+        citSel.value = plan.citizenship;
+      } else {
+        citSel.value = "*";
+      }
+      const destSel = document.getElementById("destination");
+      if ([...destSel.options].some(o => o.value === plan.destination)) {
+        destSel.value = plan.destination;
+      }
+      syncUniversitiesForCountry(false);
+      const uniSel = document.getElementById("university");
+      uniSel.value = plan.university_id || "";
+      document.getElementById("purpose").value = plan.purpose || "study";
+      document.getElementById("housing").value = plan.housing_type || "dorm";
+      document.getElementById("viaRf").checked = Boolean(plan.entry_via_rf);
+      if (plan.arrival_date) {
+        document.getElementById("arrival").value = plan.arrival_date.slice(0, 10);
+      }
     }
 
     async function preloadMapCache() {
@@ -1678,7 +2508,7 @@
     }
 
     async function refreshOfflineCache() {
-      await loadPlan();
+      await savePlan();
       await loadToolkit();
       await preloadMapCache();
     }
@@ -1689,18 +2519,30 @@
       return `${d}.${m}.${y}`;
     }
 
-    function daysWord(n) {
+    function daysLabel(n) {
+      if (uiLang === "en") return `${n} ${Math.abs(n) === 1 ? "day" : "days"}`;
+      if (uiLang === "uz") return `${n} kun`;
+      if (uiLang === "zh") return `${n} 天`;
+      if (uiLang === "by") {
+        const abs = Math.abs(n) % 100;
+        const last = abs % 10;
+        if (abs >= 11 && abs <= 19) return `${n} дзён`;
+        if (last === 1) return `${n} дзень`;
+        if (last >= 2 && last <= 4) return `${n} дні`;
+        return `${n} дзён`;
+      }
       const abs = Math.abs(n) % 100;
       const last = abs % 10;
-      if (abs >= 11 && abs <= 19) return "дней";
-      if (last === 1) return "день";
-      if (last >= 2 && last <= 4) return "дня";
-      return "дней";
+      if (abs >= 11 && abs <= 19) return `${n} дней`;
+      if (last === 1) return `${n} день`;
+      if (last >= 2 && last <= 4) return `${n} дня`;
+      return `${n} дней`;
     }
 
-    async function loadPlan() {
+    async function savePlan() {
       const payload = {
         tg_id: USER_ID,
+        lang: uiLang,
         citizenship: document.getElementById("citizenship").value,
         destination: document.getElementById("destination").value,
         university_id: document.getElementById("university").value || null,
@@ -1726,16 +2568,22 @@
       }
       if (!plan) return;
       loadedPlan = plan;
+      renderPlanView(plan);
+    }
 
-      // Update header & summary strip
+    function renderPlanView(plan) {
+      const housingMap = {
+        dorm: t("optDorm"),
+        private: t("optPrivate"),
+        hotel: t("optHotel"),
+      };
       const routeText = `${plan.citizenship} → ${plan.destination}` + (plan.university_name ? ` · ${plan.university_name}` : "");
       document.getElementById("header-route").textContent = routeText;
       document.getElementById("params-summary").textContent =
-        `${routeText} · ${HOUSING_LABELS[plan.housing_type] || plan.housing_type}`
-        + (plan.entry_via_rf ? " · через РФ" : "")
-        + ` · с ${formatDateRu(plan.arrival_date)}`;
+        `${routeText} · ${housingMap[plan.housing_type] || plan.housing_type}`
+        + (plan.destination === "BY" && plan.entry_via_rf ? " · РФ" : "")
+        + ` · ${formatDateRu(plan.arrival_date)}`;
 
-      // Moment 1: Registration deadline highlight
       const regStep = plan.steps.find(s => s.id === "registration");
       const figEl = document.getElementById("moment-days");
       const dateEl = document.getElementById("moment-date");
@@ -1746,55 +2594,53 @@
         const isUrgent = !regStep.completed && regStep.days_left !== null && regStep.days_left <= 2;
         figEl.classList.toggle("urgent", isUrgent);
         if (regStep.completed) {
-          figEl.textContent = "Оформлена";
-          dateEl.textContent = `Срок был до ${formatDateRu(regStep.deadline_date)}`;
+          figEl.textContent = t("regDone");
+          dateEl.textContent = `${t("deadlinePrefix")}${formatDateRu(regStep.deadline_date)}`;
         } else if (regStep.days_left !== null && regStep.days_left >= 0) {
-          figEl.textContent = `${regStep.days_left} ${daysWord(regStep.days_left)}`;
-          dateEl.textContent = `Крайний срок — ${formatDateRu(regStep.deadline_date)}`;
+          figEl.textContent = daysLabel(regStep.days_left);
+          dateEl.textContent = `${t("deadlinePrefix")}${formatDateRu(regStep.deadline_date)}`;
         } else {
-          figEl.textContent = "Срок истёк";
-          dateEl.textContent = `Нужно было до ${formatDateRu(regStep.deadline_date)}`;
+          figEl.textContent = t("regExpired");
+          dateEl.textContent = `${t("expiredPrefix")}${formatDateRu(regStep.deadline_date)}`;
         }
 
         const rfBlocked = plan.destination === "BY" && plan.entry_via_rf;
         methodEl.classList.toggle("urgent", rfBlocked);
         methodEl.innerHTML = (rfBlocked ? ICONS.alert : ICONS.pin)
-          + `<span>${escapeHtml(regStep.location || "По месту пребывания")}</span>`;
+          + `<span>${escapeHtml(regStep.location || "")}</span>`;
 
         if (regStep.action_url) {
           linkEl.href = regStep.action_url;
           linkEl.style.display = "inline-flex";
-          linkEl.querySelector("span").textContent = regStep.action_label || "Открыть портал";
+          linkEl.querySelector("span").textContent = regStep.action_label || "e-pasluga.by";
         } else {
           linkEl.style.display = "none";
         }
       }
 
-      // Progress bar
       const doneCount = plan.steps.filter(s => s.completed).length;
       const totalCount = plan.steps.length;
       document.getElementById("progress-label").textContent = `${doneCount} / ${totalCount}`;
       document.getElementById("progress-fill").style.transform = `scaleX(${totalCount ? doneCount / totalCount : 0})`;
 
-      // Render route timeline
       const container = document.getElementById("plan-steps");
       container.innerHTML = plan.steps.map(s => {
         const dueText = s.completed
-          ? "Готово"
-          : (s.days_left !== null ? (s.days_left >= 0 ? `${s.days_left} дн.` : "Просрочено") : "");
+          ? t("doneWord")
+          : (s.days_left !== null ? (s.days_left >= 0 ? daysLabel(s.days_left) : t("regExpired")) : "");
         return `
-          <div class="step ${s.urgency}">
+          <div class="step ${s.completed ? "done" : s.urgency}">
             <div class="step-node" aria-hidden="true"></div>
             <div class="step-head">
               <input class="step-check" type="checkbox" ${s.completed ? "checked" : ""} onchange="toggleStep('${escapeHtml(s.id)}', this.checked)" aria-label="${escapeHtml(s.title)}" />
               <div class="step-title">${escapeHtml(s.title)}</div>
-              ${dueText ? `<span class="step-due ${s.urgency}">${escapeHtml(dueText)}</span>` : ""}
+              ${dueText ? `<span class="step-due ${s.completed ? "" : s.urgency}">${escapeHtml(dueText)}</span>` : ""}
             </div>
             <p class="step-desc">${escapeHtml(s.description)}</p>
             <div class="step-meta-list">
               ${s.location ? `<div class="meta-row">${ICONS.pin}<span>${escapeHtml(s.location)}</span></div>` : ""}
               ${s.action_url ? `<div class="meta-row">${ICONS.link}<a href="${escapeHtml(s.action_url)}" target="_blank">${escapeHtml(s.action_label || s.action_url)}</a></div>` : ""}
-              ${s.source_title ? `<div class="meta-row">${ICONS.book}<span>${escapeHtml(s.source_title)}${s.verified_at ? " · проверено " + escapeHtml(formatDateRu(s.verified_at)) : ""}</span></div>` : ""}
+              ${s.source_title ? `<div class="meta-row">${ICONS.book}<span>${escapeHtml(s.source_title)}${s.verified_at ? " · " + escapeHtml(formatDateRu(s.verified_at)) : ""}</span></div>` : ""}
             </div>
           </div>
         `;
@@ -1804,20 +2650,19 @@
     }
 
     async function toggleStep(stepId, completed) {
+      if (loadedPlan) {
+        loadedPlan.steps.forEach(s => { if (s.id === stepId) s.completed = completed; });
+        writeOfflineCache({ plan: loadedPlan });
+        renderPlanView(loadedPlan);
+      }
       try {
         await fetch("/api/plan/toggle", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tg_id: USER_ID, step_id: stepId, completed }),
         });
-        await loadPlan();
       } catch (_) {
-        // Офлайн-обновление прогресса в локальном кэше
-        if (loadedPlan) {
-          loadedPlan.steps.forEach(s => { if (s.id === stepId) s.completed = completed; });
-          writeOfflineCache({ plan: loadedPlan });
-          loadPlan();
-        }
+        setOfflineMode(true);
       }
     }
 
@@ -1829,6 +2674,54 @@
         attribution: "&copy; OpenStreetMap",
       }).addTo(mapInstance);
       markersLayer = L.layerGroup().addTo(mapInstance);
+    }
+
+    function haversineMeters(lat1, lon1, lat2, lon2) {
+      const toRad = d => (d * Math.PI) / 180;
+      const R = 6371000;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
+    function formatDistance(meters) {
+      if (meters < 1000) return `${Math.round(meters / 10) * 10} м`;
+      return `${(meters / 1000).toFixed(1)} км`;
+    }
+
+    function toggleNearMe() {
+      const btn = document.getElementById("near-me-btn");
+      if (userCoords) {
+        userCoords = null;
+        btn.classList.remove("btn-primary");
+        btn.classList.add("btn-secondary");
+        if (userLocMarker && mapInstance) {
+          mapInstance.removeLayer(userLocMarker);
+          userLocMarker = null;
+        }
+        renderMapAndDirectory();
+        return;
+      }
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          userCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+          btn.classList.remove("btn-secondary");
+          btn.classList.add("btn-primary");
+          if (mapInstance) {
+            if (userLocMarker) mapInstance.removeLayer(userLocMarker);
+            userLocMarker = L.marker([userCoords.lat, userCoords.lon], {
+              icon: L.divIcon({ className: "", html: '<div class="user-pin"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
+            }).addTo(mapInstance);
+          }
+          renderMapAndDirectory();
+        },
+        () => {
+          alert("Доступ к геолокации отклонен браузером");
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
     }
 
     document.getElementById("map-chips").addEventListener("click", (e) => {
@@ -1874,10 +2767,10 @@
         setOfflineMode(true);
       }
 
-      document.getElementById("map-title").textContent = `Карта · ${loadedMapData.city || "Витебск"}`;
+      document.getElementById("map-title").textContent = `${t("navMap")} · ${loadedMapData.city || "Витебск"}`;
       document.getElementById("map-sub").textContent = loadedMapData.university
-        ? `Проверенные места для гостей ${loadedMapData.university}`
-        : "Проверенные точки первых 48 часов";
+        ? `${loadedMapData.university} · ${loadedMapData.city}`
+        : t("dirSub");
 
       renderMapAndDirectory();
     }
@@ -1885,15 +2778,23 @@
     function renderMapAndDirectory() {
       const query = (document.getElementById("map-search")?.value || "").trim().toLowerCase();
       const city = loadedMapData.city || "Витебск";
-      const points = (loadedMapData.points || []).filter(p => {
+      let points = (loadedMapData.points || []).map(p => {
+        const hasPin = p.lat !== null && p.lat !== undefined && p.lon !== null && p.lon !== undefined;
+        const dist = (userCoords && hasPin) ? haversineMeters(userCoords.lat, userCoords.lon, p.lat, p.lon) : null;
+        return { ...p, _hasPin: hasPin, _dist: dist };
+      }).filter(p => {
         if (!query) return true;
-        const hay = `${p.name} ${p.address} ${p.note || ""} ${CAT_LABELS[p.category] || ""}`.toLowerCase();
+        const catStr = t(CAT_LABELS[p.category] || p.category);
+        const hay = `${p.name} ${p.address} ${p.note || ""} ${catStr}`.toLowerCase();
         return hay.includes(query);
       });
 
-      const pinned = points.filter(p => p.lat !== null && p.lat !== undefined && p.lon !== null && p.lon !== undefined);
-      document.getElementById("map-count").textContent = `На карте: ${pinned.length}`;
-      document.getElementById("dir-count").textContent = `Всего: ${points.length}`;
+      if (userCoords) {
+        points.sort((a, b) => (a._dist ?? 1e9) - (b._dist ?? 1e9));
+      }
+
+      const pinned = points.filter(p => p._hasPin);
+      document.getElementById("dir-count").textContent = `${points.length}`;
 
       markersById = {};
       if (mapInstance && markersLayer) {
@@ -1913,7 +2814,7 @@
               `<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.address)}`
               + (p.hours ? `<br>${escapeHtml(p.hours)}` : "")
               + (p.phone ? `<br><a href="tel:${escapeHtml(p.phone)}">${escapeHtml(p.phone)}</a>` : "")
-              + `<br><a target="_blank" href="https://yandex.by/maps/?rtext=~${p.lat},${p.lon}">Построить маршрут</a>`
+              + `<br><a target="_blank" href="https://yandex.by/maps/?rtext=~${p.lat},${p.lon}">${escapeHtml(t("routeBtn"))}</a>`
             );
           markersById[p.id] = { marker, lat: p.lat, lon: p.lon };
           bounds.push([p.lat, p.lon]);
@@ -1928,31 +2829,33 @@
       }
 
       document.getElementById("map-list").innerHTML = points.map(p => {
-        const hasPin = p.lat !== null && p.lat !== undefined && p.lon !== null && p.lon !== undefined;
         const fullAddr = `${city}, ${p.address}`;
-        const routeHref = hasPin
+        const routeHref = p._hasPin
           ? `https://yandex.by/maps/?rtext=~${p.lat},${p.lon}`
           : `https://yandex.by/maps/?text=${encodeURIComponent(fullAddr)}`;
-        const catLabel = CAT_LABELS[p.category] || p.category;
+        const catLabel = t(CAT_LABELS[p.category] || p.category);
         return `
           <div class="place-row">
             <div class="place-top">
               <div class="place-name">${escapeHtml(p.name)}</div>
-              <span class="place-cat">${escapeHtml(catLabel)}</span>
+              <div class="place-badges">
+                ${p._dist !== null ? `<span class="place-dist">${escapeHtml(formatDistance(p._dist))}</span>` : ""}
+                <span class="place-cat">${escapeHtml(catLabel)}</span>
+              </div>
             </div>
             <div class="place-meta">${escapeHtml(p.address)}${p.hours ? " · " + escapeHtml(p.hours) : ""}</div>
             ${p.note ? `<div class="place-meta">${escapeHtml(p.note)}</div>` : ""}
             <div class="place-actions">
-              ${hasPin
-                ? `<button type="button" class="place-action-btn primary" onclick="focusPlace('${escapeHtml(p.id)}')">${ICONS.pin}<span>На карте</span></button>`
-                : `<span class="place-cat">Только адрес</span>`}
-              <button type="button" class="place-action-btn" onclick="copyAddress(this, '${escapeHtml(fullAddr)}')"><span>Скопировать адрес</span></button>
-              <a class="place-action-btn" target="_blank" href="${routeHref}"><span>Маршрут</span>${ICONS.link}</a>
+              ${p._hasPin
+                ? `<button type="button" class="place-action-btn primary" onclick="focusPlace('${escapeHtml(p.id)}')">${ICONS.pin}<span>${escapeHtml(t("onMapBtn"))}</span></button>`
+                : ""}
+              <button type="button" class="place-action-btn" onclick="copyAddress(this, '${escapeHtml(fullAddr)}')"><span>${escapeHtml(t("copyAddrBtn"))}</span></button>
+              <a class="place-action-btn" target="_blank" href="${routeHref}"><span>${escapeHtml(t("routeBtn"))}</span>${ICONS.link}</a>
               ${p.phone ? `<a class="place-action-btn mono" href="tel:${escapeHtml(p.phone)}">${escapeHtml(p.phone)}</a>` : ""}
             </div>
           </div>
         `;
-      }).join("") || `<div class="card-sub">По выбранным фильтрам мест не найдено</div>`;
+      }).join("") || `<div class="card-sub">—</div>`;
     }
 
     function focusPlace(id) {
@@ -1968,65 +2871,182 @@
         await navigator.clipboard.writeText(text);
         const span = btn.querySelector("span");
         const prev = span.textContent;
-        span.textContent = "Скопировано";
+        span.textContent = t("copiedBtn");
         setTimeout(() => { span.textContent = prev; }, 1400);
       } catch (_) {}
     }
 
-    function quickAsk(text) {
-      document.getElementById("ai-input").value = text;
-      sendQuestion();
-    }
-
     async function sendQuestion() {
       const inp = document.getElementById("ai-input");
+      const sendBtn = document.getElementById("ai-send-btn");
       const q = inp.value.trim();
       if (!q) return;
       lastQuestion = q;
       inp.value = "";
+      sendBtn.disabled = true;
 
       const box = document.getElementById("chat-box");
-      box.innerHTML += `<div class="msg user">${escapeHtml(q)}</div>`;
+      box.insertAdjacentHTML("beforeend", `<div class="msg user">${escapeHtml(q)}</div>`);
+      const waitEl = document.createElement("div");
+      waitEl.className = "msg bot";
+      waitEl.style.color = "var(--text-3)";
+      waitEl.textContent = t("aiThinking");
+      box.appendChild(waitEl);
       box.scrollTop = box.scrollHeight;
 
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: q,
-          destination: document.getElementById("destination").value,
-          university_id: document.getElementById("university").value || null,
-        }),
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch("/api/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: q,
+            destination: document.getElementById("destination").value || "BY",
+            university_id: document.getElementById("university").value || null,
+            lang: uiLang,
+          }),
+        });
+        if (!res.ok) throw new Error("http");
+        const data = await res.json();
 
-      let html = `<div>${escapeHtml(data.answer).replace(/\n/g, "<br>")}</div>`;
-      if (data.pii_redacted_count > 0) {
-        html += `<div class="pii-note">${ICONS.shield}<span>Личные данные (${data.pii_redacted_count}) скрыты до обработки</span></div>`;
+        let html = `<div>${escapeHtml(data.answer).replace(/\n/g, "<br>")}</div>`;
+        if (data.pii_redacted_count > 0) {
+          html += `
+            <div class="pii-note">
+              <div class="pii-note-head">${ICONS.shield}<span>${escapeHtml(t("piiMasked"))} (${data.pii_redacted_count})</span></div>
+              ${data.scrubbed_query ? `<div class="pii-scrubbed">${escapeHtml(t("piiSentAs"))} ${escapeHtml(data.scrubbed_query)}</div>` : ""}
+            </div>
+          `;
+        }
+        if (data.sources && data.sources.length) {
+          html += `<div class="sources-box"><div>${escapeHtml(t("sourcesLabel"))}</div>` + data.sources.map(
+            s => `<div><a target="_blank" href="${escapeHtml(s.source_url)}">${escapeHtml(s.source_title)}</a> · <span class="mono">${escapeHtml(formatDateRu(s.verified_at))}</span></div>`
+          ).join("") + `</div>`;
+        }
+        if (data.escalate_to_university) {
+          html += `<button type="button" class="btn btn-secondary btn-full" style="margin-top:12px;" onclick="sendTicket()">${ICONS.building}<span>${escapeHtml(t("escalateBtn"))}</span></button>`;
+        }
+        waitEl.style.color = "";
+        waitEl.innerHTML = html;
+      } catch (_) {
+        setOfflineMode(true);
+        waitEl.style.color = "";
+        waitEl.innerHTML = `<div>Нет связи с сервером. Откройте вкладки «План», «Карта» или «Сервисы» — все проверенные адреса, сроки, ЕРИП и телефоны доступны из локального офлайн-кэша.</div>`;
+      } finally {
+        sendBtn.disabled = false;
+        box.scrollTop = box.scrollHeight;
       }
-      if (data.sources && data.sources.length) {
-        html += `<div class="sources-box"><div>Источники</div>` + data.sources.map(
-          s => `<div><a target="_blank" href="${escapeHtml(s.source_url)}">${escapeHtml(s.source_title)}</a> · <span class="mono">${escapeHtml(formatDateRu(s.verified_at))}</span></div>`
-        ).join("") + `</div>`;
+    }
+
+    function compressImageToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("read"));
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error("img"));
+          img.onload = () => {
+            const maxDim = 1280;
+            let { width, height } = img;
+            if (width > maxDim || height > maxDim) {
+              const ratio = Math.min(maxDim / width, maxDim / height);
+              width = Math.round(width * ratio);
+              height = Math.round(height * ratio);
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/jpeg", 0.82));
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handlePhotoSelected(input) {
+      const file = input.files && input.files[0];
+      input.value = "";
+      if (!file) return;
+
+      const box = document.getElementById("chat-box");
+      box.insertAdjacentHTML("beforeend", `<div class="msg user">[Фото вывески: ${escapeHtml(file.name)}]</div>`);
+      const waitEl = document.createElement("div");
+      waitEl.className = "msg bot";
+      waitEl.style.color = "var(--text-3)";
+      waitEl.textContent = t("photoThinking");
+      box.appendChild(waitEl);
+      box.scrollTop = box.scrollHeight;
+
+      try {
+        const dataUrl = await compressImageToBase64(file);
+        const res = await fetch("/api/translate-photo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            image_base64: dataUrl,
+            lang: uiLang,
+            destination: document.getElementById("destination").value || "BY",
+            university_id: document.getElementById("university").value || null,
+          }),
+        });
+        if (!res.ok) throw new Error("http");
+        const data = await res.json();
+        waitEl.style.color = "";
+        waitEl.innerHTML =
+          `<div>${escapeHtml(data.translation).replace(/\n/g, "<br>")}</div>`
+          + `<div class="pii-note"><div class="pii-note-head">${ICONS.shield}<span>Обработано в оперативной памяти (RAM) · 0 байт на диске</span></div></div>`;
+      } catch (_) {
+        waitEl.style.color = "";
+        waitEl.textContent = "Не удалось отправить фото на перевод — проверьте подключение к сети";
       }
-      if (data.escalate_to_university) {
-        html += `<button class="btn btn-secondary btn-full" style="margin-top:12px;" onclick="sendTicket()">${ICONS.building}<span>Передать вопрос в международный отдел</span></button>`;
-      }
-      box.innerHTML += `<div class="msg bot">${html}</div>`;
       box.scrollTop = box.scrollHeight;
     }
 
     async function sendTicket() {
       const uniId = document.getElementById("university").value || "vsu_vitebsk";
-      const res = await fetch("/api/tickets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tg_id: USER_ID, university_id: uniId, question: lastQuestion }),
-      });
-      const data = await res.json();
-      const box = document.getElementById("chat-box");
-      box.innerHTML += `<div class="msg bot"><div class="meta-row" style="color:var(--accent);">${ICONS.check}<span>Обращение <span class="mono">#${data.ticket_id}</span> передано в международный отдел вуза. Личные данные очищены.</span></div></div>`;
-      box.scrollTop = box.scrollHeight;
+      try {
+        const res = await fetch("/api/tickets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tg_id: USER_ID, university_id: uniId, question: lastQuestion }),
+        });
+        const data = await res.json();
+        const box = document.getElementById("chat-box");
+        box.insertAdjacentHTML(
+          "beforeend",
+          `<div class="msg bot"><div class="meta-row" style="color:var(--accent);">${ICONS.check}<span>Обращение <span class="mono">#${data.ticket_id}</span> передано в международный отдел вуза. Ответ появится ниже в блоке обращений.</span></div></div>`
+        );
+        box.scrollTop = box.scrollHeight;
+        loadMyTickets();
+      } catch (_) {}
+    }
+
+    async function loadMyTickets() {
+      try {
+        const res = await fetch(`/api/tickets/my?tg_id=${encodeURIComponent(USER_ID)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = data.tickets || [];
+        const card = document.getElementById("my-tickets-card");
+        const box = document.getElementById("my-tickets-list");
+        if (!list.length) {
+          card.style.display = "none";
+          return;
+        }
+        card.style.display = "block";
+        box.innerHTML = list.map(item => `
+          <div class="ticket-row">
+            <div class="place-top">
+              <span class="mono" style="font-size:12px; color:var(--text-3);">#${item.id} · ${escapeHtml(item.university_id)}</span>
+              <span class="place-cat">${escapeHtml(item.status === "answered" ? t("ticketAnswered") : t("ticketWaiting"))}</span>
+            </div>
+            <div style="font-size:13px; color:var(--text-1);">${escapeHtml(item.question_scrubbed)}</div>
+            ${item.reply_text ? `<div class="ticket-reply">${escapeHtml(item.reply_text)}</div>` : ""}
+          </div>
+        `).join("");
+      } catch (_) {}
     }
 
     async function loadToolkit() {
@@ -2050,20 +3070,18 @@
     }
 
     function renderToolkit(data) {
-      // 1. Карточки показа на весь экран
       renderedShowCards = data.show_cards || [];
       document.getElementById("show-cards-list").innerHTML = renderedShowCards.map((c, idx) => `
         <div class="show-card-item">
           <div class="place-top">
             <span class="place-cat">${escapeHtml(c.target_role)}</span>
-            <button type="button" class="place-action-btn primary" onclick="openShowCardByIdx(${idx})">На весь экран</button>
+            <button type="button" class="place-action-btn primary" onclick="openShowCardByIdx(${idx})">${escapeHtml(t("fullscreenBtn"))}</button>
           </div>
           <div class="show-preview">${escapeHtml(c.local_text)}</div>
           ${c.native_hint ? `<div class="place-meta">${escapeHtml(c.native_hint)}</div>` : ""}
         </div>
-      `).join("") || `<div class="card-sub">Карточки для выбранной страны пока не добавлены</div>`;
+      `).join("") || `<div class="card-sub">—</div>`;
 
-      // 2. Навигатор ЕРИП и госпошлин
       const eripItems = data.erip_guides || [];
       document.getElementById("erip-list").innerHTML = eripItems.map(e => {
         const pathString = e.steps.join(" → ");
@@ -2073,35 +3091,46 @@
             <ol class="erip-steps">
               ${e.steps.map((st, i) => `<li class="erip-step"><span class="erip-num">${i + 1}</span><span>${escapeHtml(st)}</span></li>`).join("")}
             </ol>
-            <div class="place-meta"><strong>Что ввести:</strong> ${escapeHtml(e.input_hint)}</div>
+            <div class="place-meta">${escapeHtml(e.input_hint)}</div>
             ${e.fee_note ? `<div class="place-meta" style="margin-top:4px;">${escapeHtml(e.fee_note)}</div>` : ""}
             <div class="place-actions" style="margin-top:12px;">
-              <button type="button" class="place-action-btn primary" onclick="copyAddress(this, '${escapeHtml(pathString)}')"><span>Скопировать путь</span></button>
-              <button type="button" class="place-action-btn" onclick="openBanksOnMap()">${ICONS.pin}<span>Банки на карте</span></button>
+              <button type="button" class="place-action-btn primary" onclick="copyAddress(this, '${escapeHtml(pathString)}')"><span>${escapeHtml(t("copyPathBtn"))}</span></button>
+              <button type="button" class="place-action-btn" onclick="openBanksOnMap()">${ICONS.pin}<span>${escapeHtml(t("banksMapBtn"))}</span></button>
             </div>
           </div>
         `;
-      }).join("") || `<div class="card-sub">Для выбранной страны инструкции оплаты не требуются</div>`;
+      }).join("") || `<div class="card-sub">—</div>`;
 
-      // 3. Разговорник (с возможностью развернуть фразу на весь экран)
       const phrases = data.phrases || [];
       document.getElementById("phrase-list").innerHTML = phrases.map((p, idx) => `
         <div class="phrase-item">
           <div class="place-top" style="margin-bottom:8px;">
             <span class="phrase-tag" style="margin-bottom:0;">${escapeHtml(p.situation)}</span>
-            <button type="button" class="place-action-btn" onclick="openPhraseFullscreen(${idx})">Показать</button>
+            <button type="button" class="place-action-btn" onclick="openPhraseFullscreen(${idx})">${escapeHtml(t("showBtn"))}</button>
           </div>
           <div class="phrase-grid">
             <span class="lang-code">RU</span><span>${escapeHtml(p.ru)}</span>
             ${p.by ? `<span class="lang-code">BY</span><span>${escapeHtml(p.by)}</span>` : ""}
-            ${p.uz ? `<span class="lang-code">UZ</span><span>${escapeHtml(p.uz)}</span>` : ""}
             ${p.en ? `<span class="lang-code">EN</span><span style="color:var(--text-2);">${escapeHtml(p.en)}</span>` : ""}
+            ${p.uz ? `<span class="lang-code">UZ</span><span>${escapeHtml(p.uz)}</span>` : ""}
           </div>
         </div>
       `).join("");
 
-      // 4. SOS и международный отдел
-      let sosHtml = (data.contacts || []).map(c => `
+      let sosHtml = "";
+      if (data.university_office) {
+        const u = data.university_office;
+        sosHtml += `
+          <div class="sos-row">
+            <div>
+              <div class="place-name">${escapeHtml(u.name)} (${escapeHtml(u.university)})</div>
+              <div class="place-meta">${escapeHtml(u.address)}${u.email ? " · " + escapeHtml(u.email) : ""}</div>
+            </div>
+            <a class="sos-phone office" href="tel:${escapeHtml(u.phone)}">${escapeHtml(u.phone)}</a>
+          </div>
+        `;
+      }
+      sosHtml += (data.contacts || []).map(c => `
         <div class="sos-row">
           <div>
             <div class="place-name">${escapeHtml(c.title)}</div>
@@ -2110,19 +3139,6 @@
           <a class="sos-phone" href="tel:${escapeHtml(c.phone)}">${escapeHtml(c.phone)}</a>
         </div>
       `).join("");
-
-      if (data.university_office) {
-        const u = data.university_office;
-        sosHtml += `
-          <div class="sos-row">
-            <div>
-              <div class="place-name">${escapeHtml(u.name)} (${escapeHtml(u.university)})</div>
-              <div class="place-meta">${escapeHtml(u.address)} · ${escapeHtml(u.email)}</div>
-            </div>
-            <a class="sos-phone office" href="tel:${escapeHtml(u.phone)}">${escapeHtml(u.phone)}</a>
-          </div>
-        `;
-      }
       document.getElementById("sos-list").innerHTML = sosHtml;
     }
 
@@ -2138,19 +3154,32 @@
       const dest = document.getElementById("destination").value || "BY";
       const mainText = dest === "UZ" && p.uz ? p.uz : p.ru;
       const subText = dest === "UZ" ? p.ru : (p.by || "");
-      const hintText = dest === "UZ" ? (p.en || "") : (p.uz || p.en || "");
+      const hintText = p.en || p.uz || "";
       openShowCard(p.situation, mainText, subText, hintText);
     }
 
     function openShowCard(role, localText, subNote, nativeHint) {
-      document.getElementById("overlay-role").textContent = role || "Показать на экране";
+      document.getElementById("overlay-role").textContent = role || "";
       document.getElementById("overlay-text").textContent = localText || "";
       document.getElementById("overlay-sub").textContent = subNote || "";
       document.getElementById("overlay-hint").textContent = nativeHint || "";
       document.getElementById("show-overlay").classList.add("open");
     }
 
+    function speakOverlayText() {
+      if (!("speechSynthesis" in window)) return;
+      const text = document.getElementById("overlay-text").textContent || "";
+      if (!text) return;
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      const dest = document.getElementById("destination").value || "BY";
+      utter.lang = dest === "UZ" ? "uz-UZ" : "ru-RU";
+      utter.rate = 0.95;
+      window.speechSynthesis.speak(utter);
+    }
+
     function closeShowCard() {
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
       document.getElementById("show-overlay").classList.remove("open");
     }
 
@@ -2210,15 +3239,24 @@
     }
 
     async function deleteMyData() {
-      if (!confirm("Удалить настройки профиля и прогресс чек-листа из базы «Атлас»?")) return;
+      if (!confirm("Удалить настройки профиля, обращения и прогресс чек-листа из базы «Атлас»?")) return;
       try { await fetch(`/api/user/${USER_ID}`, { method: "DELETE" }); } catch (_) {}
-      localStorage.removeItem(CACHE_KEY);
-      alert("Данные профиля и локальный офлайн-кэш удалены в соответствии с Законом РБ № 99-З.");
+      try {
+        localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(ANON_UID_KEY);
+      } catch (_) {}
+      alert("Данные профиля и локальный кэш удалены в соответствии с Законом РБ № 99-З");
       location.reload();
     }
 
     function escapeHtml(str) {
-      return String(str).replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m]));
+      return String(str ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m]));
+    }
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      });
     }
 
     loadModules();

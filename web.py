@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+from contextlib import asynccontextmanager
 import logging
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -14,7 +16,19 @@ from rules import build_personal_plan
 
 logger = logging.getLogger("atlas.web")
 
-app = FastAPI(title="Атлас — ИИ-проводник для гостей Беларуси и Узбекистана", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    await db.init_db()
+    registry.reload()
+    yield
+
+
+app = FastAPI(
+    title="Атлас — модульная платформа адаптации и навигации",
+    version="1.1.0",
+    lifespan=lifespan,
+)
 
 # Ссылка на запущенный Telegram-бот (подставляется из main.py для отправки ответов на тикеты)
 _active_bot = None
@@ -36,6 +50,20 @@ def _require_admin(x_admin_token: str | None) -> None:
 @app.get("/app")
 async def serve_mini_app() -> FileResponse:
     return FileResponse(settings.static_dir / "app.html")
+
+
+@app.get("/manifest.json")
+async def serve_manifest() -> FileResponse:
+    return FileResponse(settings.static_dir / "manifest.json", media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+async def serve_service_worker() -> FileResponse:
+    return FileResponse(
+        settings.static_dir / "sw.js",
+        media_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
+    )
 
 
 @app.get("/admin")
@@ -79,13 +107,48 @@ async def get_modules() -> dict:
             "zero_pii": True,
             "pii_firewall": True,
             "sovereign_llm": settings.is_sovereign_llm,
-            "law_ref": "Закон РБ № 99-З · Указ № 60 · ЗРУ-547 ст. 27-1",
+            "law_ref": "Закон РБ № 99-З · Указ № 60",
         },
     }
 
 
+@app.get("/api/profile")
+async def get_profile_and_plan(tg_id: int = Query(10001)) -> dict:
+    """Читает сохранённый профиль и план без перезаписи параметров по умолчанию."""
+    user = await db.get_user(tg_id)
+    if user:
+        completed = await db.get_checklist_progress(tg_id)
+        plan = build_personal_plan(
+            citizenship=user["citizenship"],
+            destination=user["destination"],
+            university_id=user["university_id"],
+            purpose=user["purpose"],
+            housing_type=user["housing_type"],
+            entry_via_rf=bool(user["entry_via_rf"]),
+            arrival_date=user["arrival_date"],
+            completed_map=completed,
+        )
+        return {
+            "exists": True,
+            "lang": user.get("lang") or "ru",
+            "plan": plan.model_dump(),
+        }
+    default_plan = build_personal_plan(
+        citizenship="UZ",
+        destination="BY",
+        university_id="vsu_vitebsk",
+        purpose="study",
+        housing_type="dorm",
+        entry_via_rf=False,
+        arrival_date=None,
+        completed_map={},
+    )
+    return {"exists": False, "lang": "ru", "plan": default_plan.model_dump()}
+
+
 class PlanRequest(BaseModel):
-    tg_id: int = 10001  # Демо-ID при открытии вне Telegram
+    tg_id: int = 10001
+    lang: str = "ru"
     citizenship: str = "UZ"
     destination: str = "BY"
     university_id: str | None = "vsu_vitebsk"
@@ -100,6 +163,7 @@ async def save_and_build_plan(req: PlanRequest) -> dict:
     await db.upsert_user(
         req.tg_id,
         consent_given=1,
+        lang=req.lang,
         citizenship=req.citizenship.upper(),
         destination=req.destination.upper(),
         university_id=req.university_id,
@@ -258,6 +322,34 @@ async def api_sos(
     }
 
 
+class PhotoTranslateRequest(BaseModel):
+    image_base64: str
+    lang: str = "ru"
+    destination: str = "BY"
+    university_id: str | None = "vsu_vitebsk"
+
+
+@app.post("/api/translate-photo")
+async def api_translate_photo(req: PhotoTranslateRequest) -> dict:
+    raw = req.image_base64.strip()
+    if "," in raw and raw.startswith("data:"):
+        raw = raw.split(",", 1)[1]
+    if len(raw) > 8_500_000:
+        raise HTTPException(status_code=413, detail="Файл слишком большой (макс. 6 МБ)")
+    try:
+        img_bytes = base64.b64decode(raw, validate=False)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Некорректный формат изображения") from exc
+
+    translation = await ai.translate_photo_bytes(img_bytes, target_lang=req.lang)
+    await db.log_event(
+        "photo_translate",
+        university_id=req.university_id,
+        country_code=req.destination.upper(),
+    )
+    return {"translation": translation, "ram_only": True}
+
+
 class TicketRequest(BaseModel):
     tg_id: int = 10001
     university_id: str = "vsu_vitebsk"
@@ -275,6 +367,12 @@ async def api_create_ticket(req: TicketRequest) -> dict:
         country_code=uni.country_code if uni else None,
     )
     return {"ticket_id": ticket_id, "pii_redacted_count": pii_hits, "question_scrubbed": clean_q}
+
+
+@app.get("/api/tickets/my")
+async def api_my_tickets(tg_id: int = Query(10001)) -> dict:
+    items = await db.list_user_tickets(tg_id, limit=20)
+    return {"tickets": items}
 
 
 @app.delete("/api/user/{tg_id}")

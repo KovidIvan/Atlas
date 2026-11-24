@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 
 import uvicorn
 
@@ -12,9 +13,18 @@ from loader import registry
 import monitor
 from web import app, set_active_bot
 
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(line_buffering=True)
+        except Exception:
+            pass
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stdout,
+    force=True,
 )
 logger = logging.getLogger("atlas.main")
 

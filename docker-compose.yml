@@ -1,0 +1,16 @@
+services:
+  atlas:
+    build: .
+    container_name: atlas-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8005
+      - DB_FILE=/app/storage/atlas.db
+    ports:
+      - "8005:8005"
+    volumes:
+      - ./data:/app/data
+      - ./atlas_data:/app/storage

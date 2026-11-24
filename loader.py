@@ -161,7 +161,11 @@ class ModuleRegistry:
 
         unis_dir = self.data_dir / "universities"
         if unis_dir.exists():
-            for path in sorted(unis_dir.glob("*.json")):
+            uni_files = sorted(
+                unis_dir.glob("*.json"),
+                key=lambda p: (0 if p.stem == "vsu_vitebsk" else 1, p.name),
+            )
+            for path in uni_files:
                 raw = json.loads(path.read_text(encoding="utf-8"))
                 mod = UniversityModule.model_validate(raw)
                 universities[mod.id] = mod

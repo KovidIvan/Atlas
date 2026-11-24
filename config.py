@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     nla_check_interval_min: int = 360
     reminder_check_interval_min: int = 60
+    db_file: str = ""
 
     @property
     def data_dir(self) -> Path:
@@ -36,6 +37,10 @@ class Settings(BaseSettings):
 
     @property
     def db_path(self) -> Path:
+        if self.db_file:
+            p = Path(self.db_file)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            return p
         return BASE_DIR / "atlas.db"
 
     @property

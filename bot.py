@@ -29,7 +29,7 @@ _last_scrubbed_question: dict[int, str] = {}
 
 CONSENT_TEXT = (
     "👋 <b>Добро пожаловать в «Атлас»!</b>\n"
-    "ИИ-проводник для иностранных студентов и гостей Беларуси и Узбекистана.\n\n"
+    "Цифровая платформа адаптации и навигации для иностранных студентов и гостей Беларуси.\n\n"
     "🔒 <b>Конфиденциальность (Закон РБ № 99-З):</b>\n"
     "• Мы <b>не запрашиваем и не храним</b> ФИО, номера/фото паспортов, телефоны и адреса.\n"
     "• Перед обращением к ИИ срабатывает локальный <b>Privacy Firewall</b>, скрывающий случайные личные данные.\n"
@@ -74,7 +74,7 @@ async def cmd_start(message: Message) -> None:
     user = await db.get_user(message.from_user.id)
     if user and user.get("consent_given"):
         await message.answer(
-            "🕊 <b>AIst / Лайлак на связи!</b>\n\n"
+            "🕊 <b>AIst на связи!</b>\n\n"
             "• Напишите любой вопрос о регистрации, учёбе, быте или культуре.\n"
             "• Отправьте <b>фото вывески или объявления</b> (не паспорта!) — я переведу и объясню смысл.\n"
             "• Или откройте «Мой план» и карту кнопками ниже.",
@@ -243,7 +243,7 @@ async def handle_photo(message: Message, bot: Bot) -> None:
     buf.close()
     await db.log_event("photo_translate", university_id=user.get("university_id"), country_code=user["destination"])
     await status.edit_text(
-        f"📷 <b>Перевод вывески (AIst / Лайлак):</b>\n\n{html.escape(result)}\n\n"
+        f"📷 <b>Перевод вывески (AIst):</b>\n\n{html.escape(result)}\n\n"
         "<i>🔒 Фото обработано в RAM и не сохранено на диск.</i>",
         parse_mode="HTML",
     )
@@ -270,7 +270,7 @@ async def handle_question(message: Message) -> None:
         topic=res.topic,
     )
 
-    parts = [f"🕊 <b>AIst / Лайлак:</b>\n{html.escape(res.answer)}"]
+    parts = [f"🕊 <b>AIst:</b>\n{html.escape(res.answer)}"]
     if res.pii_redacted_count:
         parts.append(
             f"\n🔒 <i>Privacy Firewall скрыл персональные данные ({res.pii_redacted_count}) перед обработкой.</i>"

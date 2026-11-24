@@ -166,10 +166,15 @@ def build_personal_plan(
                     else f"Онлайн ({rule.online_portal_name})"
                 )
 
+            if rule.grace_days >= 30:
+                reg_title = f"Льготный срок без регистрации — {rule.grace_days} сут. (до {deadline.strftime('%d.%m.%Y')})"
+            else:
+                reg_title = f"Временная регистрация (срок до {deadline.strftime('%d.%m.%Y')})"
+
             steps.append(
                 PlanStep(
                     id="registration",
-                    title=f"Временная регистрация (срок до {deadline.strftime('%d.%m.%Y')})",
+                    title=reg_title,
                     description=reg_desc,
                     deadline_date=deadline.isoformat(),
                     days_left=days_left,
@@ -204,6 +209,27 @@ def build_personal_plan(
                     completed=done,
                 )
             )
+    elif purpose == "tourism":
+        ins_done = completed_map.get("tourism_insurance", False)
+        steps.append(
+            PlanStep(
+                id="tourism_insurance",
+                title="Медицинская страховка и правила безвизового режима",
+                description=(
+                    "Проверьте наличие действующего полиса медицинского страхования на весь срок поездки "
+                    "(для РБ подходит «Белгосстрах» или «Белэксимгарант») и соблюдайте установленный коридор пребывания."
+                    if dest_code == "BY"
+                    else "Проверьте медицинскую страховку и сохраняйте подтверждения регистрации в отелях до выезда."
+                ),
+                deadline_date=(arrival + timedelta(days=1)).isoformat(),
+                days_left=((arrival + timedelta(days=1)) - today).days,
+                urgency=_calc_urgency(((arrival + timedelta(days=1)) - today).days, ins_done),
+                location=f"Город прибытия: {uni.city}" if uni else "",
+                source_title="МИД РБ / Госпрограмма «Туризм»" if dest_code == "BY" else "",
+                source_url="https://mfa.gov.by" if dest_code == "BY" else "",
+                completed=ins_done,
+            )
+        )
 
     # Бытовой шаг (связь + оплата)
     daily_done = completed_map.get("daily_basics", False)

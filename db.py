@@ -226,6 +226,22 @@ async def list_tickets(limit: int = 50) -> list[dict]:
         return [dict(r) for r in await cur.fetchall()]
 
 
+async def list_user_tickets(tg_id: int, limit: int = 20) -> list[dict]:
+    async with aiosqlite.connect(settings.db_path) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute(
+            """
+            SELECT id, university_id, question_scrubbed, status, reply_text, created_at, replied_at
+            FROM tickets
+            WHERE tg_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (tg_id, limit),
+        )
+        return [dict(r) for r in await cur.fetchall()]
+
+
 async def reply_ticket(ticket_id: int, reply_text: str) -> dict | None:
     now = _now_iso()
     async with aiosqlite.connect(settings.db_path) as conn:
