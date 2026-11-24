@@ -809,6 +809,31 @@
             <section class="card">
               <div class="card-head">
                 <div>
+                  <h2 class="card-title">Подключение ИИ и гибридный RAG</h2>
+                  <p class="card-sub">Выберите бесплатный пресет, вставьте API-ключ и нажмите «Проверить и сохранить»</p>
+                </div>
+              </div>
+              <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+                <button type="button" class="btn btn-secondary" style="height:28px; padding:0 10px; font-size:12px;" onclick="applyPreset('groq')">Groq (Free)</button>
+                <button type="button" class="btn btn-secondary" style="height:28px; padding:0 10px; font-size:12px;" onclick="applyPreset('gemini')">Gemini (Free)</button>
+                <button type="button" class="btn btn-secondary" style="height:28px; padding:0 10px; font-size:12px;" onclick="applyPreset('openrouter')">OpenRouter (Free)</button>
+                <button type="button" class="btn btn-secondary" style="height:28px; padding:0 10px; font-size:12px;" onclick="applyPreset('ollama')">Ollama (РБ)</button>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <input type="text" id="llm-url" placeholder="Base URL (например, https://api.groq.com/openai/v1)" />
+                <input type="password" id="llm-key" placeholder="API-ключ (оставьте пустым, чтобы не менять сохранённый)" />
+                <input type="text" id="llm-model" placeholder="Текстовая модель (llama-3.3-70b-versatile)" />
+                <input type="text" id="llm-vision" placeholder="Vision-модель для вывесок" />
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">
+                  <button type="button" class="btn btn-primary" style="flex:1;" onclick="saveAndTestLlm(false)">Проверить и сохранить</button>
+                  <button type="button" class="btn btn-secondary" onclick="saveAndTestLlm(true)" title="Перевести в автономный режим без внешнего ключа">Сбросить ключ</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-head">
+                <div>
                   <h2 class="card-title">Контур конфиденциальности</h2>
                   <p class="card-sub">Текущие параметры обработки данных</p>
                 </div>
@@ -902,8 +927,17 @@
         `<div class="layer-title">Слой 1 · Страны</div>${cRows}`
         + `<div class="layer-title">Слой 2 · Университеты и города</div>${uRows}`;
 
-      // Security spec
+      // Security spec & LLM inputs
+      document.getElementById("llm-url").value = data.security.llm_base_url || "";
+      document.getElementById("llm-model").value = data.security.llm_model || "";
+      document.getElementById("llm-vision").value = data.security.llm_vision_model || "";
+      document.getElementById("llm-key").value = "";
+      document.getElementById("llm-key").placeholder = data.security.llm_has_key
+        ? `Ключ сохранён (${data.security.llm_key_masked}) — введите новый для замены`
+        : "Вставьте бесплатный API-ключ (gsk_... / AIza... / sk-or-...)";
+
       document.getElementById("security-spec").innerHTML = `
+        <div class="spec-row"><span class="spec-key">Индекс BM25 RAG</span><span class="spec-val mono">${data.security.rag_chunks || 0} фрагм.</span></div>
         <div class="spec-row"><span class="spec-key">Хранилище</span><span class="spec-val">Zero-PII (SQLite)</span></div>
         <div class="spec-row"><span class="spec-key">Фильтр до ИИ</span><span class="spec-val">Privacy Firewall активен</span></div>
         <div class="spec-row"><span class="spec-key">Режим ИИ</span><span class="spec-val">${escapeHtml(data.security.llm_mode)}</span></div>
@@ -972,11 +1006,68 @@
       }
     }
 
+    const LLM_PRESETS = {
+      groq: {
+        url: "https://api.groq.com/openai/v1",
+        model: "llama-3.3-70b-versatile",
+        vision: "meta-llama/llama-4-scout-17b-16e-instruct",
+      },
+      gemini: {
+        url: "https://generativelanguage.googleapis.com/v1beta/openai/",
+        model: "gemini-2.5-flash",
+        vision: "gemini-2.5-flash",
+      },
+      openrouter: {
+        url: "https://openrouter.ai/api/v1",
+        model: "openrouter/free",
+        vision: "openrouter/free",
+      },
+      ollama: {
+        url: "http://127.0.0.1:11434/v1",
+        model: "qwen2.5:7b",
+        vision: "qwen2.5vl:7b",
+      },
+    };
+
+    function applyPreset(name) {
+      const p = LLM_PRESETS[name];
+      if (!p) return;
+      document.getElementById("llm-url").value = p.url;
+      document.getElementById("llm-model").value = p.model;
+      document.getElementById("llm-vision").value = p.vision;
+      if (name === "ollama") {
+        document.getElementById("llm-key").value = "ollama";
+      }
+      showNotice(`Выбран пресет ${name.toUpperCase()} — вставьте API-ключ и нажмите «Проверить и сохранить»`);
+    }
+
+    async function saveAndTestLlm(clearKey = false) {
+      showNotice(clearKey ? "Отключаем внешний ключ..." : "Проверяем соединение с ИИ...");
+      const res = await fetch("/api/admin/llm", {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({
+          base_url: document.getElementById("llm-url").value,
+          api_key: document.getElementById("llm-key").value,
+          clear_key: clearKey,
+          model: document.getElementById("llm-model").value,
+          vision_model: document.getElementById("llm-vision").value,
+        }),
+      });
+      if (!res.ok) {
+        showNotice("Ошибка сохранения настроек ИИ (проверьте токен доступа)", true);
+        return;
+      }
+      const data = await res.json();
+      showNotice(data.message, !data.ok);
+      loadOverview();
+    }
+
     async function reloadModules() {
       const res = await fetch("/api/admin/reload", { method: "POST", headers: headers() });
       if (!res.ok) { showNotice("Ошибка перезагрузки модулей", true); return; }
       const data = await res.json();
-      showNotice(`Модули обновлены из папки data/: стран — ${data.loaded.countries}, вузов — ${data.loaded.universities}`);
+      showNotice(`Модули обновлены: стран — ${data.loaded.countries}, вузов — ${data.loaded.universities}, RAG-чанков — ${data.rag_chunks}`);
       loadOverview();
     }
 

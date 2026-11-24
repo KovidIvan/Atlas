@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 import ai
-from config import settings
+from config import persist_llm_config, settings
 import db
 from loader import registry
 import monitor
@@ -21,6 +21,7 @@ logger = logging.getLogger("atlas.web")
 async def lifespan(_app: FastAPI):
     await db.init_db()
     registry.reload()
+    ai.rag_index.rebuild()
     yield
 
 
@@ -204,6 +205,7 @@ class AskRequest(BaseModel):
     destination: str = "BY"
     university_id: str | None = "vsu_vitebsk"
     lang: str = "ru"
+    history: list[dict[str, str]] = []
 
 
 @app.post("/api/ask")
@@ -213,6 +215,7 @@ async def api_ask(req: AskRequest) -> dict:
         destination=req.destination,
         university_id=req.university_id,
         lang=req.lang,
+        history=req.history,
     )
     await db.log_event(
         "ask",
@@ -386,8 +389,13 @@ async def api_delete_user(tg_id: int) -> dict:
 @app.get("/api/admin/overview")
 async def admin_overview(x_admin_token: str | None = Header(None)) -> dict:
     _require_admin(x_admin_token)
+    ai.rag_index.ensure_built()
     stats = await db.get_admin_stats()
     tickets = await db.list_tickets(limit=30)
+    raw_key = settings.llm_api_key
+    masked_key = (
+        f"{raw_key[:4]}…{raw_key[-4:]}" if len(raw_key) > 8 else ("задан" if raw_key else "")
+    )
     return {
         "stats": stats,
         "tickets": tickets,
@@ -404,14 +412,51 @@ async def admin_overview(x_admin_token: str | None = Header(None)) -> dict:
         "security": {
             "zero_pii": True,
             "pii_firewall": True,
+            "rag_chunks": len(ai.rag_index.chunks),
             "llm_mode": (
                 "Локальный суверенный ИИ"
-                if settings.is_sovereign_llm
-                else ("Облачный API (обезличивание)" if settings.llm_api_key else "Локальная база знаний (без внешнего API)")
+                if settings.is_sovereign_llm and settings.llm_api_key
+                else ("Подключён внешний LLM + Strict RAG" if settings.llm_api_key else "Автономный BM25 RAG (без API-ключа)")
             ),
             "llm_base_url": settings.llm_base_url,
+            "llm_model": settings.llm_model,
+            "llm_vision_model": settings.llm_vision_model,
+            "llm_has_key": bool(raw_key),
+            "llm_key_masked": masked_key,
         },
     }
+
+
+class LlmConfigRequest(BaseModel):
+    base_url: str
+    api_key: str = ""
+    clear_key: bool = False
+    model: str
+    vision_model: str = ""
+
+
+@app.post("/api/admin/llm")
+async def admin_update_llm(
+    req: LlmConfigRequest,
+    x_admin_token: str | None = Header(None),
+) -> dict:
+    _require_admin(x_admin_token)
+    new_key: str | None
+    if req.clear_key:
+        new_key = ""
+    elif req.api_key.strip():
+        new_key = req.api_key.strip()
+    else:
+        new_key = None  # сохраняем ранее введённый ключ, если поле оставили пустым
+
+    persist_llm_config(
+        base_url=req.base_url,
+        api_key=new_key,
+        model=req.model,
+        vision_model=req.vision_model or req.model,
+    )
+    ok, msg = await ai.test_llm_connection()
+    return {"ok": ok, "message": msg}
 
 
 class TicketReplyRequest(BaseModel):
@@ -447,7 +492,8 @@ async def admin_reply_ticket(
 async def admin_reload_modules(x_admin_token: str | None = Header(None)) -> dict:
     _require_admin(x_admin_token)
     counts = registry.reload()
-    return {"ok": True, "loaded": counts}
+    ai.rag_index.rebuild()
+    return {"ok": True, "loaded": counts, "rag_chunks": len(ai.rag_index.chunks)}
 
 
 @app.post("/api/admin/check-nla")

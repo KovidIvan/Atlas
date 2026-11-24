@@ -2264,6 +2264,7 @@
     let filterAccessible = false;
     let userCoords = null; // { lat, lon } — хранится только в оперативной памяти браузера
     let lastQuestion = "";
+    let chatHistory = [];
 
     function applyStaticTranslations() {
       document.documentElement.lang = uiLang === "by" ? "be" : uiLang;
@@ -2903,10 +2904,19 @@
             destination: document.getElementById("destination").value || "BY",
             university_id: document.getElementById("university").value || null,
             lang: uiLang,
+            history: chatHistory.slice(-4),
           }),
         });
         if (!res.ok) throw new Error("http");
         const data = await res.json();
+
+        chatHistory.push({ role: "user", content: q });
+        chatHistory.push({ role: "assistant", content: data.answer || "" });
+        if (chatHistory.length > 8) chatHistory = chatHistory.slice(-8);
+
+        const modeLabel = data.mode === "sovereign_llm"
+          ? "Суверенный ИИ + BM25 RAG"
+          : (data.mode === "cloud_llm_scrubbed" ? "LLM + Strict BM25 RAG" : "Автономный BM25 RAG");
 
         let html = `<div>${escapeHtml(data.answer).replace(/\n/g, "<br>")}</div>`;
         if (data.pii_redacted_count > 0) {
@@ -2918,7 +2928,7 @@
           `;
         }
         if (data.sources && data.sources.length) {
-          html += `<div class="sources-box"><div>${escapeHtml(t("sourcesLabel"))}</div>` + data.sources.map(
+          html += `<div class="sources-box"><div style="display:flex; justify-content:space-between; gap:8px;"><span>${escapeHtml(t("sourcesLabel"))}</span><span class="mono">${escapeHtml(modeLabel)}</span></div>` + data.sources.map(
             s => `<div><a target="_blank" href="${escapeHtml(s.source_url)}">${escapeHtml(s.source_title)}</a> · <span class="mono">${escapeHtml(formatDateRu(s.verified_at))}</span></div>`
           ).join("") + `</div>`;
         }
